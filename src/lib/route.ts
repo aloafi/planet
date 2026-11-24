@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 
-export type Route = 'now' | 'plan' | 'day' | 'summary' | 're'
-const ROUTES: Route[] = ['now', 'plan', 'day', 'summary']
+export type Route = 'now' | 'plan' | 'day' | 'stats' | 'summary' | 're'
+const ROUTES: Route[] = ['now', 'plan', 'day', 'stats', 'summary']
 
 /** /re is a real path (recovery page); everything else lives in the hash */
 const onRecover = () => window.location.pathname.replace(/\/+$/, '') === '/re'

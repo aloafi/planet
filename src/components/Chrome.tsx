@@ -10,6 +10,7 @@ export function Nav({ route, onSettings }: { route: Route; onSettings: () => voi
     ['now', t('now')],
     ['plan', t('plan')],
     ['day', t('day')],
+    ['stats', t('analytics')],
   ]
   const active = route === 'summary' ? 'day' : route
   return (
@@ -20,7 +21,14 @@ export function Nav({ route, onSettings }: { route: Route; onSettings: () => voi
       <nav className="nav-links" aria-label="Main">
         {items.map(([r, l]) => (
           <button key={r} className={active === r ? 'on' : ''} aria-current={active === r ? 'page' : undefined} onClick={() => go(r)}>
-            {l}
+            {r === 'stats' ? (
+              <>
+                <span className="nl-full">{l}</span>
+                <span className="nl-short">{t('analyticsShort')}</span>
+              </>
+            ) : (
+              l
+            )}
           </button>
         ))}
         <button className="nav-settings" onClick={onSettings} aria-label={t('settings')}>
