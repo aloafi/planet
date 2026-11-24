@@ -20,6 +20,7 @@ export function ForecastCard() {
   if (!state.settings.ai || tasksOf(state.plan).length === 0) return null
 
   const run = async () => {
+    if (busy) return
     setBusy(true)
     setErr(null)
     try {
@@ -73,35 +74,64 @@ export function ForecastCard() {
 
 /* ---------- recap (end of day) ---------- */
 
+/**
+ * Claim the right to write today's recap across every open tab: only the first
+ * visible tab gets it, so several tabs never fire several requests at once.
+ */
+function claimRecap(runId: string) {
+  const key = 'planet:recap-claim'
+  try {
+    const raw = localStorage.getItem(key)
+    const prev = raw ? (JSON.parse(raw) as { id: string; at: number }) : null
+    if (prev && prev.id === runId && Date.now() - prev.at < 90_000) return false
+    localStorage.setItem(key, JSON.stringify({ id: runId, at: Date.now() }))
+    return true
+  } catch {
+    return true
+  }
+}
+
 export function RecapCard() {
   const { state, now, act } = useStore()
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState<string | null>(null)
   const tried = useRef<string | null>(null)
+  const inFlight = useRef(false)
   const recap = state.run.recap
   const done = state.run.phase === 'done'
 
-  const run = async () => {
+  const run = async (manual: boolean) => {
+    if (inFlight.current) return
+    inFlight.current = true
     setBusy(true)
     setErr(null)
     try {
       const r = await recapDay(state, now, dayLogOf(state, now))
       act({ type: 'SET_RECAP', recap: r })
     } catch (e) {
-      setErr(aiErrorText(e))
+      // a failed rewrite keeps the recap you already have; only say so when you asked for it
+      if (manual || !recap) setErr(aiErrorText(e))
       if (e instanceof AIError && e.code === 'no_key') tried.current = state.run.id
     } finally {
+      inFlight.current = false
       setBusy(false)
     }
   }
 
-  // write the recap once, automatically, when the day is finished
+  // write the recap once, automatically, when the day is finished — in one tab only
   useEffect(() => {
     if (!done || !state.settings.ai || recap || tried.current === state.run.id) return
+    if (document.visibilityState !== 'visible') return
     tried.current = state.run.id
-    run()
+    if (!claimRecap(state.run.id)) return
+    run(false)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [done, state.settings.ai, recap, state.run.id])
+
+  // a recap that arrives from another tab replaces any error shown here
+  useEffect(() => {
+    if (recap) setErr(null)
+  }, [recap])
 
   if (!state.settings.ai || !done) return null
 
@@ -112,7 +142,7 @@ export function RecapCard() {
             {t('yourDay')}
         </span>
         {(recap || err) && (
-          <button className="link quiet" onClick={run} disabled={busy}>
+          <button className="link quiet" onClick={() => run(true)} disabled={busy}>
             {busy ? t('writing') : recap ? t('rewrite') : t('tryAgain')}
           </button>
         )}

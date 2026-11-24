@@ -117,20 +117,31 @@ Deno.serve(async (req) => {
   if (!(await withinCap(`planet:ip:${ip}`, IP_CAP))) return reply(429, { error: 'rate' })
 
   try {
-    const r = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'x-api-key': key, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
-      body: JSON.stringify({
-        model: MODEL,
-        max_tokens: 4000,
-        system: `${PROMPTS[mode]}\n${LANG[body.lang ?? 'auto'] ?? LANG.auto}`,
-        messages: [{ role: 'user', content: `Data:\n${JSON.stringify(body.payload ?? {})}\n\nReply with the JSON object only.` }],
-      }),
+    const request = JSON.stringify({
+      model: MODEL,
+      max_tokens: 4000,
+      system: `${PROMPTS[mode]}\n${LANG[body.lang ?? 'auto'] ?? LANG.auto}`,
+      messages: [{ role: 'user', content: `Data:\n${JSON.stringify(body.payload ?? {})}\n\nReply with the JSON object only.` }],
     })
-    if (!r.ok) {
-      console.error('anthropic', r.status, (await r.text()).slice(0, 300))
-      return reply(502, { error: r.status === 401 ? 'bad_key' : 'upstream' })
+    // the key is shared with other apps: wait and retry briefly when Anthropic is busy
+    let r: Response | null = null
+    for (let attempt = 0; attempt < 3; attempt++) {
+      r = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'x-api-key': key, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
+        body: request,
+      })
+      if (r.status !== 429 && r.status !== 529 && r.status < 500) break
+      if (attempt < 2) {
+        await r.body?.cancel()
+        await new Promise((ok) => setTimeout(ok, 900 * (attempt + 1) + Math.random() * 400))
+      }
     }
+    if (!r!.ok) {
+      console.error('anthropic', r!.status, (await r!.text()).slice(0, 300))
+      return reply(502, { error: r!.status === 401 ? 'bad_key' : r!.status === 429 ? 'rate' : 'upstream' })
+    }
+    r = r!
     const data = await r.json()
     const text = (data.content ?? []).filter((c: { type?: string }) => c.type === 'text').map((c: { text?: string }) => c.text ?? '').join('')
     const j = parse(text)
