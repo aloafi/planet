@@ -2,6 +2,8 @@ import { daysUntil, eventOf, summaryOf, tasksOf } from './engine'
 import type { AppState, DayLog, Forecast, Recap } from './types'
 
 const MIN = 60_000
+/** Supabase Edge Function that holds the Anthropic key (see supabase/functions/planet-ai) */
+const ENDPOINT = 'https://lsvzudrcmjxeerarfevw.supabase.co/functions/v1/planet-ai'
 const mins = (ms: number) => Math.round(ms / MIN)
 
 export class AIError extends Error {
@@ -16,9 +18,9 @@ export function aiErrorText(e: unknown) {
   const code = e instanceof AIError ? e.code : 'network'
   switch (code) {
     case 'no_key':
-      return 'AI isn’t connected yet. Add ANTHROPIC_API_KEY in the Vercel project settings.'
+      return 'AI isn’t connected yet — the Anthropic key wasn’t found in Supabase.'
     case 'bad_key':
-      return 'The Anthropic API key was rejected. Check it in Vercel.'
+      return 'The Anthropic API key was rejected. Check it in Supabase.'
     case 'rate':
       return 'Too many requests. Try again in a minute.'
     default:
@@ -29,7 +31,7 @@ export function aiErrorText(e: unknown) {
 async function ask<T>(mode: 'forecast' | 'recap', payload: unknown, lang: string): Promise<T> {
   let r: Response
   try {
-    r = await fetch('/api/ai', {
+    r = await fetch(ENDPOINT, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ mode, payload, lang }),

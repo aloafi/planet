@@ -26,9 +26,10 @@ sequence; you handle the execution.
 - **Share image** — the summary becomes a 1080×1350 image (planet, stats, tasks, recap)
   to share, download or copy. Arabic task names are laid out right-to-left.
 
-The AI runs through `api/ai.js` (a Vercel function) on Claude Haiku. Set
-`ANTHROPIC_API_KEY` in the Vercel project's environment variables. Only task names,
-durations, statuses and event names are sent. AI can be turned off in Settings.
+The AI runs through the `planet-ai` Supabase Edge Function
+(`supabase/functions/planet-ai`) on Claude Haiku, using the Anthropic key already stored
+in Supabase. Only task names, durations, statuses and event names are sent. AI can be
+turned off in Settings.
 
 ## Behaviour
 
