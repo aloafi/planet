@@ -22,7 +22,7 @@ import { fmtDate, nBreaks, nTasks, t as tx } from '../lib/i18n'
 import type { Block, BlockType } from '../lib/types'
 
 export function Plan() {
-  const { state, act } = useStore()
+  const { state, act, undoable } = useStore()
   const { plan, run } = state
   const [editing, setEditing] = useState<string | null>(null)
   const [fresh, setFresh] = useState<string | null>(null)
@@ -104,6 +104,7 @@ export function Plan() {
                     setFresh(null)
                   }}
                   onInsert={(type) => insert(type, i + 1)}
+                  onDelete={() => undoable({ type: 'DELETE_BLOCK', id: block.id }, tx('deletedToast', { name: block.name || (block.type === 'break' ? tx('break') : tx('untitled')) }))}
                 />
               ))}
             </ol>
@@ -162,6 +163,7 @@ function Row(props: {
   onToggle: () => void
   onClose: () => void
   onInsert: (t: BlockType) => void
+  onDelete: () => void
 }) {
   const { block: b, start, status, editing } = props
   const { attributes, listeners, setNodeRef, transform, transition, isDragging, setActivatorNodeRef } = useSortable({ id: b.id })
@@ -199,6 +201,7 @@ function Row(props: {
         <div className="pl-insert">
           <button onClick={() => props.onInsert('task')}>{tx('addTaskHere')}</button>
           <button onClick={() => props.onInsert('break')}>{tx('addBreakHere')}</button>
+          <button className="pl-del" onClick={props.onDelete}>{tx('delete')}</button>
         </div>
       )}
     </li>

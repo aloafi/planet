@@ -22,6 +22,8 @@ interface Ctx {
   act: (a: Act) => void
   /** Finish/Skip/End break — remembers the previous state so it can be undone */
   step: (kind: 'FINISH' | 'SKIP', label: string) => void
+  /** any change that should offer Undo for a few seconds */
+  undoable: (a: Act, label: string) => void
   undo: Undo | null
   doUndo: () => void
   dismissUndo: () => void
@@ -52,6 +54,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     // any other change makes the last Finish/Skip no longer safely undoable
     if (a.type !== 'MARK_ALERTED' && a.type !== 'SETTINGS' && a.type !== 'KEEP_GOING') setUndo(null)
     dispatch({ ...a, now: Date.now() } as Action)
+  }, [])
+
+  const undoable = useCallback((a: Act, label: string) => {
+    const prev = ref.current
+    dispatch({ ...a, now: Date.now() } as Action)
+    setUndo({ prev, label, id: Date.now() })
   }, [])
 
   const step = useCallback((kind: 'FINISH' | 'SKIP', label: string) => {
@@ -177,7 +185,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     meta?.setAttribute('content', state.settings.theme === 'dark' ? '#0b0b0c' : '#f5f4f0')
   }, [state.settings.theme])
 
-  const value = useMemo(() => ({ state, now, act, step, undo, doUndo, dismissUndo }), [state, now, act, step, undo, doUndo, dismissUndo])
+  const value = useMemo(() => ({ state, now, act, step, undoable, undo, doUndo, dismissUndo }), [state, now, act, step, undoable, undo, doUndo, dismissUndo])
   return <StoreCtx.Provider value={value}>{children}</StoreCtx.Provider>
 }
 

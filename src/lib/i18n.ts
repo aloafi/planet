@@ -92,6 +92,7 @@ const en = {
   skippedToast: '{name} skipped',
   breakEnded: 'Break ended',
   undo: 'Undo',
+  deletedToast: '{name} deleted',
   dismiss: 'Dismiss',
   // summary
   soFar: 'So far today.',
@@ -327,6 +328,7 @@ const ar: Record<Key, string> = {
   skippedToast: 'تم تخطي {name}',
   breakEnded: 'انتهت الاستراحة',
   undo: 'تراجع',
+  deletedToast: 'حُذفت {name}',
   dismiss: 'إخفاء',
   soFar: 'حتى الآن اليوم.',
   dayComplete: 'اكتمل اليوم.',

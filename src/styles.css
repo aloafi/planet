@@ -1904,3 +1904,13 @@ button.ev-row {
   font-family: 'IBM Plex Sans Arabic', 'Geist Variable', ui-sans-serif, system-ui, sans-serif;
   font-variant-numeric: tabular-nums;
 }
+
+.pl-insert button.pl-del {
+  color: var(--danger);
+  border-color: color-mix(in srgb, var(--danger) 45%, transparent);
+}
+.pl-insert button.pl-del:hover {
+  color: #fff;
+  background: var(--danger);
+  border-color: var(--danger);
+}
