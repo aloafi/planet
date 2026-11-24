@@ -1,4 +1,5 @@
-export type BlockType = 'task' | 'break'
+/** a 'session' block is a divider: everything after it, up to the next one, belongs to that session */
+export type BlockType = 'task' | 'break' | 'session'
 
 export interface Block {
   id: string
@@ -9,6 +10,8 @@ export interface Block {
   duration: number
   /** untimed tasks count up instead of down and never expire */
   timed: boolean
+  /** a break made from time saved — it spends saved time, so it counts against the time bank */
+  bonus?: boolean
 }
 
 export interface Plan {
@@ -116,6 +119,8 @@ export interface Run {
   endedEarly: boolean
   /** AI recap of this day, once written */
   recap?: Recap | null
+  /** set when a session has just ended: the screen asks what to do next */
+  gate?: { sessionId: string; nextId: string } | null
 }
 
 export interface Settings {

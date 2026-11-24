@@ -12,7 +12,7 @@ import { SortableContext, sortableKeyboardCoordinates, useSortable, verticalList
 import { restrictToVertical } from '../lib/dnd'
 import { CSS } from '@dnd-kit/utilities'
 import { useStore } from '../lib/store'
-import { parseHM, scheduleOf, statusOf, uid } from '../lib/engine'
+import { parseHM, scheduleOf, sessionBlocks, sessionNumber, statusOf, uid } from '../lib/engine'
 import { hm, human, minutesLabel } from '../lib/format'
 import { go } from '../lib/route'
 import { planetFx } from '../lib/fx'
@@ -29,7 +29,7 @@ export function Plan() {
   const sched = scheduleOf(plan)
   const totalMin = plan.blocks.reduce((a, b) => a + b.duration, 0)
   const tasks = plan.blocks.filter((b) => b.type === 'task').length
-  const breaks = plan.blocks.length - tasks
+  const breaks = plan.blocks.filter((b) => b.type === 'break').length
   const start = parseHM(plan.startTime)
 
   const sensors = useSensors(
@@ -104,7 +104,7 @@ export function Plan() {
                     setFresh(null)
                   }}
                   onInsert={(type) => insert(type, i + 1)}
-                  onDelete={() => undoable({ type: 'DELETE_BLOCK', id: block.id }, tx('deletedToast', { name: block.name || (block.type === 'break' ? tx('break') : tx('untitled')) }))}
+                  onDelete={() => undoable({ type: 'DELETE_BLOCK', id: block.id }, tx('deletedToast', { name: block.name || (block.type === 'break' ? tx('break') : block.type === 'session' ? tx('session') : tx('untitled')) }))}
                 />
               ))}
             </ol>
@@ -147,7 +147,7 @@ function newBlock(type: BlockType, name = '', duration?: number): Block {
     type,
     name: type === 'break' && !name ? tx('break') : name,
     description: '',
-    duration: duration ?? (type === 'break' ? 10 : 45),
+    duration: type === 'session' ? 0 : duration ?? (type === 'break' ? 10 : 45),
     timed: true,
   }
 }
@@ -168,6 +168,43 @@ function Row(props: {
   const { block: b, start, status, editing } = props
   const { attributes, listeners, setNodeRef, transform, transition, isDragging, setActivatorNodeRef } = useSortable({ id: b.id })
   const style = { transform: CSS.Translate.toString(transform), transition }
+  const { state } = useStore()
+
+  if (b.type === 'session') {
+    const members = sessionBlocks(state.plan, b.id)
+    const mins = members.reduce((a, x) => a + x.duration, 0)
+    const label = b.name.trim() || tx('sessionN', { n: sessionNumber(state.plan, b.id) })
+    return (
+      <li ref={setNodeRef} style={style} className={`pl-row pl-session ${editing ? 'is-editing' : ''} ${isDragging ? 'is-dragging' : ''}`}>
+        <div className="pl-line">
+          <button ref={setActivatorNodeRef} className="handle" aria-label={tx('reorder', { name: label })} {...attributes} {...listeners}>
+            <svg viewBox="0 0 10 16" width="10" height="16" aria-hidden>
+              {[3, 8, 13].map((y) => (
+                <g key={y}>
+                  <circle cx="2.5" cy={y} r="1.3" />
+                  <circle cx="7.5" cy={y} r="1.3" />
+                </g>
+              ))}
+            </svg>
+          </button>
+          <span className="pl-time" dir="ltr">{hm(start)}</span>
+          <button className="pl-name" onClick={props.onToggle} aria-expanded={editing}>
+            <span className="pl-title">{label}</span>
+          </button>
+          <span className="pl-dur">{tx('sessionMeta', { tasks: nTasks(members.filter((x) => x.type === 'task').length), time: human(mins * 60_000) })}</span>
+          <span className="pl-status" />
+        </div>
+        {editing && <SessionEditor block={b} placeholder={tx('sessionN', { n: sessionNumber(state.plan, b.id) })} onClose={props.onClose} />}
+        {!editing && (
+          <div className="pl-insert">
+            <button onClick={() => props.onInsert('task')}>{tx('addTaskHere')}</button>
+            <button onClick={() => props.onInsert('break')}>{tx('addBreakHere')}</button>
+            <button className="pl-del" onClick={props.onDelete}>{tx('delete')}</button>
+          </div>
+        )}
+      </li>
+    )
+  }
 
   return (
     <li
@@ -201,10 +238,29 @@ function Row(props: {
         <div className="pl-insert">
           <button onClick={() => props.onInsert('task')}>{tx('addTaskHere')}</button>
           <button onClick={() => props.onInsert('break')}>{tx('addBreakHere')}</button>
+          <button onClick={() => props.onInsert('session')}>{tx('addSessionHere')}</button>
           <button className="pl-del" onClick={props.onDelete}>{tx('delete')}</button>
         </div>
       )}
     </li>
+  )
+}
+
+function SessionEditor({ block: b, placeholder, onClose }: { block: Block; placeholder: string; onClose: () => void }) {
+  const { act } = useStore()
+  const ref = useRef<HTMLInputElement>(null)
+  useEffect(() => ref.current?.focus(), [])
+  return (
+    <div className="editor" onKeyDown={(e) => (e.key === 'Escape' || e.key === 'Enter') && onClose()}>
+      <label className="field">
+        <span>{tx('sessionName')}</span>
+        <input ref={ref} value={b.name} placeholder={placeholder} dir="auto" maxLength={40} onChange={(e) => act({ type: 'UPDATE_BLOCK', id: b.id, patch: { name: e.target.value } })} />
+      </label>
+      <div className="editor-actions">
+        <button className="link danger" onClick={() => act({ type: 'DELETE_BLOCK', id: b.id })}>{tx('delete')}</button>
+        <button className="chip solid" onClick={onClose}>{tx('done')}</button>
+      </div>
+    </div>
   )
 }
 
@@ -351,6 +407,7 @@ function QuickAdd() {
       </label>
       <button className="chip solid" onClick={add}>{tx('addTask')}</button>
       <button className="chip" onClick={() => act({ type: 'ADD_BLOCK', block: newBlock('break') })}>{tx('addBreak')}</button>
+      <button className="chip" onClick={() => act({ type: 'ADD_BLOCK', block: newBlock('session') })}>{tx('addSession')}</button>
     </div>
   )
 }

@@ -37,6 +37,20 @@ export const nMin = (n: number) => {
 
 const en = {
   // nav
+  // sessions
+  session: 'Session',
+  sessionN: 'Session {n}',
+  addSession: 'Add session',
+  addSessionHere: '+ Session',
+  sessionName: 'Session name',
+  sessionDone: '{name} complete.',
+  sessionStats: '{done} of {total} tasks · {focus} focused',
+  savedQ: 'You saved {t}. Take it as a break?',
+  takeSavedBreak: 'Take a {t} break',
+  continueTo: 'Continue to {name}',
+  startNextSession: 'Start {name}',
+  bonusBreak: 'Break from saved time',
+  sessionMeta: '{tasks} · {time}',
   now: 'Now',
   plan: 'Plan',
   day: 'Day',
@@ -274,6 +288,19 @@ const en = {
 export type Key = keyof typeof en
 
 const ar: Record<Key, string> = {
+  session: 'جلسة',
+  sessionN: 'الجلسة {n}',
+  addSession: 'أضف جلسة',
+  addSessionHere: '+ جلسة',
+  sessionName: 'اسم الجلسة',
+  sessionDone: 'اكتملت {name}.',
+  sessionStats: 'أُنجزت {done} من {total} · تركيز {focus}',
+  savedQ: 'وفّرت {t}. هل تريد أخذها استراحة؟',
+  takeSavedBreak: 'خذ استراحة {t}',
+  continueTo: 'تابع إلى {name}',
+  startNextSession: 'ابدأ {name}',
+  bonusBreak: 'استراحة من الوقت الموفَّر',
+  sessionMeta: '{tasks} · {time}',
   now: 'الآن',
   plan: 'الخطة',
   day: 'اليوم',

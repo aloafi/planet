@@ -1178,7 +1178,7 @@ textarea::placeholder {
 .toast {
   position: fixed;
   left: 50%;
-  bottom: calc(20px + env(safe-area-inset-bottom));
+  top: calc(72px + env(safe-area-inset-top));
   z-index: 40;
   transform: translateX(-50%);
   display: flex;
@@ -1211,7 +1211,7 @@ textarea::placeholder {
 @keyframes toast {
   from {
     opacity: 0;
-    transform: translate(-50%, 12px);
+    transform: translate(-50%, -10px);
   }
 }
 
@@ -1932,4 +1932,52 @@ button.ev-row {
 }
 [dir='rtl'] .wordmark {
   direction: ltr;
+}
+
+/* ============ sessions ============ */
+.pl-row.pl-session {
+  margin-top: 18px;
+  border-top: 1px solid var(--line-strong);
+}
+.plan-list > .pl-session:first-child {
+  margin-top: 0;
+}
+.pl-session .pl-line {
+  min-height: 52px;
+}
+.pl-session .pl-title {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--text);
+}
+.pl-session .pl-dur {
+  font-family: inherit;
+  font-size: 12px;
+  color: var(--text-3);
+}
+.tl-session {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 26px 0 10px;
+  border-bottom: 1px solid var(--line-strong);
+}
+.timeline > .tl-session:first-child {
+  padding-top: 14px;
+}
+.tl-session-name {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+.tl-session-meta {
+  font-size: 12px;
+  color: var(--text-3);
+}
+.gate-q {
+  margin-top: 18px;
 }

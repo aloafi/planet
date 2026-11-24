@@ -157,3 +157,50 @@ describe('time bank ignores off-the-clock finishes', () => {
     expect(bankOf(s, T0 + 5000).counted).toBe(0)
   })
 })
+
+describe('sessions', () => {
+  const sblocks: Block[] = [
+    { id: 's1', type: 'session', name: '', description: '', duration: 0, timed: true },
+    { id: 'a', type: 'task', name: 'Math', description: '', duration: 45, timed: true },
+    { id: 'b', type: 'task', name: 'Physics', description: '', duration: 30, timed: true },
+    { id: 's2', type: 'session', name: '', description: '', duration: 0, timed: true },
+    { id: 'c', type: 'task', name: 'English', description: '', duration: 40, timed: true },
+  ]
+  const ss = () => reducer(initialState(T0), { type: 'SET_BLOCKS', blocks: sblocks, now: T0 })
+
+  it('dividers are never executed and keep a zero duration', () => {
+    const s = run(ss(), { type: 'START_DAY', now: T0 })
+    expect(s.run.currentId).toBe('a')
+    expect(s.plan.blocks[0].duration).toBe(0)
+  })
+
+  it('finishing a session stops at a gate with the time saved in that session', () => {
+    const s = run(ss(), { type: 'START_DAY', now: T0 }, { type: 'FINISH', now: T0 + 40 * MIN }, { type: 'FINISH', now: T0 + 65 * MIN })
+    expect(s.run.gate).toEqual({ sessionId: 's1', nextId: 'c' })
+    expect(s.run.timer.status).toBe('ready')
+    expect(bankOf(s, T0 + 65 * MIN, 's1').ms).toBe(10 * MIN)
+  })
+
+  it('taking the saved time as a break uses it up', () => {
+    let s = run(ss(), { type: 'START_DAY', now: T0 }, { type: 'FINISH', now: T0 + 40 * MIN }, { type: 'FINISH', now: T0 + 65 * MIN })
+    s = reducer(s, { type: 'TAKE_BONUS_BREAK', minutes: 10, name: 'Bonus', now: T0 + 65 * MIN })
+    expect(s.run.gate).toBeNull()
+    const bonus = s.plan.blocks.find((b) => b.bonus)!
+    expect(s.plan.blocks.indexOf(bonus)).toBe(3) // end of session 1, before session 2
+    expect(s.run.currentId).toBe(bonus.id)
+    // break runs out on its own and moves on into session 2 (no second gate: it belongs to session 1)
+    s = reducer(s, { type: 'TICK', now: T0 + 76 * MIN })
+    expect(s.run.currentId).toBe('c')
+    expect(s.run.gate).toBeNull()
+    expect(s.run.timer.status).toBe('running')
+    expect(bankOf(s, T0 + 76 * MIN).ms).toBe(0)
+  })
+
+  it('continue skips the bonus and starts the next session', () => {
+    let s = run(ss(), { type: 'START_DAY', now: T0 }, { type: 'FINISH', now: T0 + 40 * MIN }, { type: 'FINISH', now: T0 + 65 * MIN })
+    s = reducer(s, { type: 'CONTINUE_SESSION', now: T0 + 66 * MIN })
+    expect(s.run.gate).toBeNull()
+    expect(s.run.currentId).toBe('c')
+    expect(s.run.timer.status).toBe('running')
+  })
+})

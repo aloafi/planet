@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react'
 import { useStore } from '../lib/store'
-import { bankOf, currentBlock, elapsedOf, nextPending, progressOf, remainingOf, scheduleOf, taskNumber, tasksOf, totalMsOf, sampleBlocks } from '../lib/engine'
+import { sessionBlocks, sessionNumber, sessionOf, statusOf, bankOf, currentBlock, elapsedOf, nextPending, progressOf, remainingOf, scheduleOf, taskNumber, tasksOf, totalMsOf, sampleBlocks } from '../lib/engine'
 import { clock, hm, human, minutesLabel, signed, stopwatch } from '../lib/format'
 import { go } from '../lib/route'
-import type { Block } from '../lib/types'
+import type { Block, Plan } from '../lib/types'
 import { Summary } from './Summary'
 import { planetFx, type FxTint } from '../lib/fx'
 import { eventOf } from '../lib/engine'
@@ -19,9 +19,86 @@ export function Now() {
   if (plan.blocks.length === 0) return <Empty />
   if (run.phase === 'done') return <Summary />
   if (run.phase === 'idle') return <Ready />
+  if (run.gate) return <SessionEnd />
   const b = currentBlock(state)
   if (!b) return <Ready />
   return b.type === 'break' ? <BreakMode b={b} /> : <TaskMode b={b} />
+}
+
+/** "Session 2" — the divider's own name if it has one */
+export function sessionLabel(plan: Plan, id: string | null | undefined) {
+  const sess = sessionOf(plan, id)
+  if (!sess) return null
+  return sess.name.trim() || tx('sessionN', { n: sessionNumber(plan, sess.id) })
+}
+
+/* ---------- between sessions ---------- */
+
+function SessionEnd() {
+  const { state, now, act } = useStore()
+  const { plan, run } = state
+  const gate = run.gate!
+  const name = sessionLabel(plan, gate.sessionId) ?? tx('session')
+  const nextName = sessionLabel(plan, gate.nextId)
+  const members = sessionBlocks(plan, gate.sessionId).filter((b) => b.type === 'task')
+  const done = members.filter((b) => statusOf(run, b.id) === 'completed').length
+  const focus = members.reduce((a, b) => a + (run.records[b.id]?.spentMs ?? 0), 0)
+  const saved = bankOf(state, now, gate.sessionId).ms
+  const savedMin = Math.round(saved / 60_000)
+  const offer = savedMin >= 1
+
+  const takeBreak = (e: React.MouseEvent<HTMLButtonElement> | null) => {
+    planetFx('orbit', e?.currentTarget ?? mainButton(), 'break')
+    act({ type: 'TAKE_BONUS_BREAK', minutes: savedMin, name: tx('bonusBreak') })
+  }
+  const go = (e: React.MouseEvent<HTMLButtonElement> | null) => {
+    planetFx('launch', e?.currentTarget ?? mainButton())
+    act({ type: 'CONTINUE_SESSION' })
+  }
+  useShortcuts({ enter: () => (offer ? takeBreak(null) : go(null)) })
+
+  return (
+    <main className="stage mode-task">
+      <div className="stage-top">
+        <div className="meta">
+          <span>{name}</span>
+          <MetaRight />
+        </div>
+        <Progress />
+      </div>
+
+      <section className="focus" key={gate.sessionId}>
+        <span className="eyebrow">{tx('sessionStats', { done, total: members.length, focus: human(focus) })}</span>
+        <h1 className="task-name len-m">{tx('sessionDone', { name })}</h1>
+        {offer && (
+          <div className="timer">
+            <span className="timer-digits" dir="ltr">+{clock(savedMin * 60_000)}</span>
+            <span className="timer-label">{tx('saved')}</span>
+          </div>
+        )}
+        {offer && <p className="task-desc gate-q">{tx('savedQ', { t: nMin(savedMin) })}</p>}
+      </section>
+
+      <section className="controls">
+        {offer ? (
+          <>
+            <button className="primary" onClick={takeBreak} autoFocus>
+              {tx('takeSavedBreak', { t: nMin(savedMin) })}
+            </button>
+            <div className="secondary">
+              <button className="link" onClick={go}>
+                {nextName ? tx('continueTo', { name: nextName }) : tx('continue')}
+              </button>
+            </div>
+          </>
+        ) : (
+          <button className="primary" onClick={go} autoFocus>
+            {nextName ? tx('startNextSession', { name: nextName }) : tx('continue')}
+          </button>
+        )}
+      </section>
+    </main>
+  )
 }
 
 /* ---------- shared bits ---------- */
@@ -129,7 +206,10 @@ function TaskMode({ b }: { b: Block }) {
     <main className="stage mode-task">
       <div className="stage-top">
         <div className="meta">
-          <span>{tx('taskOf', { n: String(n), total: String(total) })}</span>
+          <span>
+            {sessionLabel(plan, b.id) ? `${sessionLabel(plan, b.id)} · ` : ''}
+            {tx('taskOf', { n: String(n), total: String(total) })}
+          </span>
           <MetaRight />
         </div>
         <Progress />

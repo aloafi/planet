@@ -81,7 +81,8 @@ export const elapsedOf = (t: Timer, now: number) =>
 
 export const totalMsOf = (b: Block, t: Timer) => b.duration * MIN + t.extendMs
 
-export const isCountdown = (b: Block) => b.type === 'break' || b.timed
+export const isCountdown = (b: Block) => b.type === 'break' || (b.type === 'task' && b.timed)
+export const isSession = (b: Block) => b.type === 'session'
 
 /** ms left on the countdown (negative = overtime). null for untimed tasks. */
 export const remainingOf = (b: Block, t: Timer, now: number) =>
@@ -99,7 +100,36 @@ export const currentBlock = (s: AppState) =>
   s.run.currentId ? s.plan.blocks.find((b) => b.id === s.run.currentId) ?? null : null
 
 export const nextPending = (plan: Plan, run: Run, excludeId: string | null) =>
-  plan.blocks.find((b) => b.id !== excludeId && statusOf(run, b.id) === 'pending') ?? null
+  plan.blocks.find((b) => b.type !== 'session' && b.id !== excludeId && statusOf(run, b.id) === 'pending') ?? null
+
+/* ---------- sessions ---------- */
+
+export const sessionsOf = (plan: Plan) => plan.blocks.filter(isSession)
+
+/** the session divider a block sits under (null when the plan has no session above it) */
+export const sessionOf = (plan: Plan, id: string | null | undefined) => {
+  if (!id) return null
+  let cur: Block | null = null
+  for (const b of plan.blocks) {
+    if (b.type === 'session') cur = b
+    if (b.id === id) return b.type === 'session' ? b : cur
+  }
+  return null
+}
+
+/** 1-based number of a session */
+export const sessionNumber = (plan: Plan, sessionId: string) => sessionsOf(plan).findIndex((b) => b.id === sessionId) + 1
+
+/** the work blocks inside a session */
+export const sessionBlocks = (plan: Plan, sessionId: string) => {
+  const out: Block[] = []
+  let inside = false
+  for (const b of plan.blocks) {
+    if (b.type === 'session') inside = b.id === sessionId
+    else if (inside) out.push(b)
+  }
+  return out
+}
 
 export const tasksOf = (plan: Plan) => plan.blocks.filter((b) => b.type === 'task')
 
@@ -137,12 +167,21 @@ export const scheduleOf = (plan: Plan) => {
  * over its planned time eats into the bank live. Skipped and untimed blocks don't count,
  * nor do blocks marked done in under a minute (finished off the clock).
  */
-export const bankOf = (s: AppState, now: number) => {
+export const bankOf = (s: AppState, now: number, onlySession?: string) => {
   let ms = 0
   let counted = 0
+  const scope = onlySession ? new Set(sessionBlocks(s.plan, onlySession).map((b) => b.id)) : null
   for (const b of s.plan.blocks) {
-    if (!isCountdown(b)) continue
+    if (!isCountdown(b) || (scope && !scope.has(b.id))) continue
     const r = s.run.records[b.id]
+    if (b.bonus) {
+      // a break taken from saved time uses that time up
+      if (r && r.spentMs > 0) {
+        ms -= r.spentMs
+        counted++
+      }
+      continue
+    }
     // a block marked done within its first minute was done off the clock — it says nothing about speed
     if (r?.status === 'completed' && r.spentMs >= MIN) {
       ms += b.duration * MIN - r.spentMs
@@ -150,9 +189,10 @@ export const bankOf = (s: AppState, now: number) => {
     }
   }
   const cur = s.run.phase === 'active' ? currentBlock(s) : null
-  if (cur && isCountdown(cur)) {
+  if (cur && isCountdown(cur) && (!scope || scope.has(cur.id))) {
     const prior = s.run.records[cur.id]?.spentMs ?? 0
-    const over = prior + elapsedOf(s.run.timer, now) - cur.duration * MIN
+    const planned = cur.bonus ? 0 : cur.duration * MIN
+    const over = prior + elapsedOf(s.run.timer, now) - planned
     if (over > 0) {
       ms -= over
       counted++
@@ -213,7 +253,7 @@ export function dayLogOf(s: AppState, now: number): DayLog {
     eventId: ev?.id ?? null,
     eventName: ev?.name ?? null,
     endedEarly: s.run.endedEarly,
-    blocks: s.plan.blocks.map((b) => {
+    blocks: s.plan.blocks.filter((b) => b.type !== 'session').map((b) => {
       let spent = s.run.records[b.id]?.spentMs ?? 0
       if (b.id === s.run.currentId && s.run.phase === 'active') spent += elapsedOf(s.run.timer, now)
       return { name: b.name || (b.type === 'break' ? t('break') : t('untitled')), type: b.type, plannedMin: b.duration, spentMs: spent, status: statusOf(s.run, b.id) }
@@ -267,6 +307,8 @@ export type Action =
   | { type: 'SET_PLAN_EVENT'; id: string | null }
   | { type: 'SET_FORECAST'; forecast: Forecast | null }
   | { type: 'SET_RECAP'; recap: Recap | null; now: number }
+  | { type: 'TAKE_BONUS_BREAK'; minutes: number; name: string; now: number }
+  | { type: 'CONTINUE_SESSION'; now: number }
 
 const rec = (run: Run, id: string): BlockRecord => run.records[id] ?? { status: 'pending', spentMs: 0 }
 
@@ -283,22 +325,29 @@ function leaveCurrent(
   const spent = opts.spentMs ?? elapsedOf(run.timer, now)
   const r = rec(run, id)
   const records = { ...run.records, [id]: { status, spentMs: r.spentMs + spent, doneAt: opts.nextStartAt ?? now } }
-  return advance({ ...s, run: { ...run, records } }, now, opts.nextStartAt, opts.forceStart)
+  return advance({ ...s, run: { ...run, records } }, now, opts.nextStartAt, opts.forceStart, id)
 }
 
-function advance(s: AppState, now: number, startAt?: number, forceStart?: boolean): AppState {
+function advance(s: AppState, now: number, startAt?: number, forceStart?: boolean, fromId?: string): AppState {
   const next = nextPending(s.plan, s.run, s.run.currentId)
   if (!next) {
-    return { ...s, run: { ...s.run, phase: 'done', currentId: null, endedAt: startAt ?? now, timer: freshTimer(null, false) } }
+    return { ...s, run: { ...s.run, phase: 'done', currentId: null, gate: null, endedAt: startAt ?? now, timer: freshTimer(null, false) } }
+  }
+  // finishing the last block of a session pauses at the session's end and asks what's next
+  const from = fromId ? s.plan.blocks.find((b) => b.id === fromId) : null
+  // (a bonus break is what you chose at the gate, so it flows straight into the next session)
+  const ended = from && !from.bonus ? sessionOf(s.plan, from.id) : null
+  if (ended && sessionOf(s.plan, next.id)?.id !== ended.id) {
+    return { ...s, run: { ...s.run, phase: 'active', currentId: next.id, gate: { sessionId: ended.id, nextId: next.id }, timer: freshTimer(null, false) } }
   }
   const start = forceStart ?? s.settings.autoStartNext
-  return { ...s, run: { ...s.run, phase: 'active', currentId: next.id, timer: freshTimer(startAt ?? now, start) } }
+  return { ...s, run: { ...s.run, phase: 'active', currentId: next.id, gate: null, timer: freshTimer(startAt ?? now, start) } }
 }
 
 /** Resolve any breaks whose countdown ran out (possibly while the page was closed). */
 function settleBreaks(s: AppState, now: number): AppState {
   let guard = 0
-  while (guard++ < 200 && s.run.phase === 'active' && s.settings.breakEnd === 'auto') {
+  while (guard++ < 200 && s.run.phase === 'active' && s.settings.breakEnd === 'auto' && !s.run.gate) {
     const b = currentBlock(s)
     if (!b || b.type !== 'break') break
     const at = expiryAt(b, s.run.timer)
@@ -405,6 +454,7 @@ function step(s: AppState, a: Action): AppState {
         startedAt: run.startedAt ?? a.now,
         endedAt: null,
         endedEarly: false,
+        gate: null,
         currentId: a.id,
         records: { ...run.records, [a.id]: { ...target, status: 'pending' } },
         timer: freshTimer(a.now, true),
@@ -420,7 +470,7 @@ function step(s: AppState, a: Action): AppState {
         run = { ...run, records: { ...run.records, [run.currentId]: { ...r, spentMs: r.spentMs + elapsedOf(run.timer, a.now) } } }
       }
       const early = s.plan.blocks.some((b) => statusOf(run, b.id) === 'pending')
-      return { ...s, run: { ...run, phase: 'done', currentId: null, endedAt: a.now, endedEarly: early, timer: freshTimer(null, false) } }
+      return { ...s, run: { ...run, phase: 'done', currentId: null, gate: null, endedAt: a.now, endedEarly: early, timer: freshTimer(null, false) } }
     }
 
     case 'RESET_DAY':
@@ -444,7 +494,8 @@ function step(s: AppState, a: Action): AppState {
       const blocks = s.plan.blocks.filter((b) => b.id !== a.id)
       const records = { ...s.run.records }
       delete records[a.id]
-      let next: AppState = { ...s, plan: { ...s.plan, blocks }, run: { ...s.run, records } }
+      const gate = s.run.gate && (s.run.gate.sessionId === a.id || s.run.gate.nextId === a.id) ? null : s.run.gate
+      let next: AppState = { ...s, plan: { ...s.plan, blocks }, run: { ...s.run, records, gate } }
       if (s.run.currentId === a.id) next = advance({ ...next, run: { ...next.run, currentId: null } }, a.now)
       if (blocks.length === 0) next = { ...next, run: freshRun(a.now) }
       return next
@@ -510,6 +561,25 @@ function step(s: AppState, a: Action): AppState {
     case 'SET_PLAN_EVENT':
       return { ...s, plan: { ...s.plan, eventId: a.id } }
 
+    case 'TAKE_BONUS_BREAK': {
+      const gate = s.run.gate
+      if (!gate) return s
+      const minutes = Math.max(1, Math.round(a.minutes))
+      const block: Block = { id: uid(), type: 'break', name: a.name, description: '', duration: minutes, timed: true, bonus: true }
+      // the bonus break sits at the end of the session that earned it
+      const at = s.plan.blocks.findIndex((b) => b.id === gate.sessionId)
+      const members = sessionBlocks(s.plan, gate.sessionId)
+      const lastIdx = members.length ? s.plan.blocks.findIndex((b) => b.id === members[members.length - 1].id) : at
+      const blocks = [...s.plan.blocks]
+      blocks.splice(lastIdx + 1, 0, block)
+      return { ...s, plan: { ...s.plan, blocks }, run: { ...s.run, gate: null, currentId: block.id, timer: freshTimer(a.now, true) } }
+    }
+
+    case 'CONTINUE_SESSION': {
+      if (!s.run.gate) return s
+      return { ...s, run: { ...s.run, gate: null, timer: freshTimer(a.now, true) } }
+    }
+
     case 'SET_FORECAST':
       return { ...s, forecast: a.forecast }
 
@@ -521,13 +591,13 @@ function step(s: AppState, a: Action): AppState {
 }
 
 export function sanitize(b: Block): Block {
-  const duration = Math.max(1, Math.min(600, Math.round(Number(b.duration) || 1)))
+  const duration = b.type === 'session' ? 0 : Math.max(1, Math.min(600, Math.round(Number(b.duration) || 1)))
   return {
     ...b,
     name: b.name ?? '',
     description: b.description ?? '',
     duration,
-    timed: b.type === 'break' ? true : b.timed,
+    timed: b.type === 'task' ? b.timed : true,
   }
 }
 

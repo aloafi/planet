@@ -1,11 +1,11 @@
 import { useState } from 'react'
 import { useStore } from '../lib/store'
-import { bankOf, progressOf, scheduleOf, statusOf } from '../lib/engine'
-import { hm, minutesLabel, signed } from '../lib/format'
+import { bankOf, progressOf, scheduleOf, sessionBlocks, sessionNumber, statusOf } from '../lib/engine'
+import { hm, human, minutesLabel, signed } from '../lib/format'
 import { go } from '../lib/route'
 import { planetFx } from '../lib/fx'
 import { EventTag } from './Events'
-import { t } from '../lib/i18n'
+import { nTasks, t } from '../lib/i18n'
 import { eventOf } from '../lib/engine'
 
 type Visual = 'completed' | 'current' | 'upcoming' | 'skipped'
@@ -59,6 +59,18 @@ export function Day() {
 
       <ol className="timeline">
         {sched.map(({ block: b, start }) => {
+          if (b.type === 'session') {
+            const members = sessionBlocks(plan, b.id)
+            const mins = members.reduce((a, x) => a + x.duration, 0)
+            return (
+              <li key={b.id} className="tl-session">
+                <span className="tl-session-name">{b.name.trim() || t('sessionN', { n: sessionNumber(plan, b.id) })}</span>
+                <span className="tl-session-meta">
+                  {t('sessionMeta', { tasks: nTasks(members.filter((x) => x.type === 'task').length), time: human(mins * 60_000) })}
+                </span>
+              </li>
+            )
+          }
           const v = visual(b.id)
           const canJump = v === 'upcoming' || v === 'skipped'
           const isOpen = open === b.id && canJump
@@ -131,7 +143,7 @@ export function Day() {
   )
 }
 
-function label(v: Visual, type: 'task' | 'break') {
+function label(v: Visual, type: 'task' | 'break' | 'session') {
   if (v === 'completed') return type === 'break' ? t('taken') : t('completed')
   if (v === 'current') return t('nowState')
   if (v === 'skipped') return t('skipped')
