@@ -154,6 +154,73 @@ function newBlock(type: BlockType, name = '', duration?: number): Block {
 
 /* ---------- a single timeline block ---------- */
 
+/** Drag a row to the right to delete it. Vertical movement is left to scrolling and to the drag handle. */
+function useSwipeToDelete(onDelete: () => void, disabled: boolean) {
+  const [dx, setDx] = useState(0)
+  const [active, setActive] = useState(false)
+  const dxRef = useRef(0)
+  const width = useRef(1)
+  const swiped = useRef(false)
+  const st = useRef<{ x: number; y: number; id: number; locked: boolean | null } | null>(null)
+  const set = (v: number) => {
+    dxRef.current = v
+    setDx(v)
+  }
+  const threshold = () => Math.min(140, width.current * 0.35)
+
+  const bind = {
+    onPointerDown: (e: React.PointerEvent<HTMLDivElement>) => {
+      if (disabled || (e.pointerType === 'mouse' && e.button !== 0)) return
+      if ((e.target as HTMLElement).closest('.handle, input, textarea')) return
+      st.current = { x: e.clientX, y: e.clientY, id: e.pointerId, locked: null }
+      width.current = e.currentTarget.getBoundingClientRect().width
+      swiped.current = false
+    },
+    onPointerMove: (e: React.PointerEvent<HTMLDivElement>) => {
+      const s = st.current
+      if (!s || e.pointerId !== s.id) return
+      const mx = e.clientX - s.x
+      const my = e.clientY - s.y
+      if (s.locked === null) {
+        if (Math.abs(mx) < 8 && Math.abs(my) < 8) return
+        s.locked = mx > 0 && Math.abs(mx) > Math.abs(my) * 1.3
+        if (!s.locked) {
+          st.current = null
+          return
+        }
+        e.currentTarget.setPointerCapture(e.pointerId)
+        setActive(true)
+      }
+      swiped.current = true
+      set(Math.max(0, mx))
+    },
+    onPointerUp: () => finish(),
+    onPointerCancel: () => finish(true),
+    onClickCapture: (e: React.MouseEvent) => {
+      // a swipe is not a click on the task name
+      if (swiped.current) {
+        e.preventDefault()
+        e.stopPropagation()
+        swiped.current = false
+      }
+    },
+  }
+
+  function finish(cancel = false) {
+    const s = st.current
+    st.current = null
+    setActive(false)
+    if (!s || !s.locked) return
+    if (!cancel && dxRef.current > threshold()) {
+      set(width.current)
+      window.setTimeout(onDelete, 170)
+    } else set(0)
+  }
+
+  return { dx, active, bind, progress: Math.min(1, dx / threshold()) }
+}
+
+
 function Row(props: {
   block: Block
   start: number
@@ -169,6 +236,16 @@ function Row(props: {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging, setActivatorNodeRef } = useSortable({ id: b.id })
   const style = { transform: CSS.Translate.toString(transform), transition }
   const { state } = useStore()
+  const swipe = useSwipeToDelete(props.onDelete, editing || isDragging)
+  const slide = {
+    transform: swipe.dx ? `translateX(${swipe.dx}px)` : undefined,
+    transition: swipe.active ? 'none' : 'transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1)',
+  }
+  const reveal = (
+    <div className="pl-swipe-bg" style={{ opacity: swipe.progress }} aria-hidden>
+      <span>{tx('delete')}</span>
+    </div>
+  )
 
   if (b.type === 'session') {
     const members = sessionBlocks(state.plan, b.id)
@@ -176,7 +253,9 @@ function Row(props: {
     const label = b.name.trim() || tx('sessionN', { n: sessionNumber(state.plan, b.id) })
     return (
       <li ref={setNodeRef} style={style} className={`pl-row pl-session ${editing ? 'is-editing' : ''} ${isDragging ? 'is-dragging' : ''}`}>
-        <div className="pl-line">
+        <div className="pl-swipe">
+        {reveal}
+        <div className="pl-line" {...swipe.bind} style={slide}>
           <button ref={setActivatorNodeRef} className="handle" aria-label={tx('reorder', { name: label })} {...attributes} {...listeners}>
             <svg viewBox="0 0 10 16" width="10" height="16" aria-hidden>
               {[3, 8, 13].map((y) => (
@@ -194,12 +273,12 @@ function Row(props: {
           <span className="pl-dur">{tx('sessionMeta', { tasks: nTasks(members.filter((x) => x.type === 'task').length), time: human(mins * 60_000) })}</span>
           <span className="pl-status" />
         </div>
+        </div>
         {editing && <SessionEditor block={b} placeholder={tx('sessionN', { n: sessionNumber(state.plan, b.id) })} onClose={props.onClose} />}
         {!editing && (
           <div className="pl-insert">
             <button onClick={() => props.onInsert('task')}>{tx('addTaskHere')}</button>
             <button onClick={() => props.onInsert('break')}>{tx('addBreakHere')}</button>
-            <button className="pl-del" onClick={props.onDelete}>{tx('delete')}</button>
           </div>
         )}
       </li>
@@ -212,7 +291,9 @@ function Row(props: {
       style={style}
       className={`pl-row pl-${b.type} st-${status} ${editing ? 'is-editing' : ''} ${isDragging ? 'is-dragging' : ''}`}
     >
-      <div className="pl-line">
+      <div className="pl-swipe">
+      {reveal}
+      <div className="pl-line" {...swipe.bind} style={slide}>
         <button ref={setActivatorNodeRef} className="handle" aria-label={tx('reorder', { name: b.name || b.type })} {...attributes} {...listeners}>
           <svg viewBox="0 0 10 16" width="10" height="16" aria-hidden>
             {[3, 8, 13].map((y) => (
@@ -233,13 +314,13 @@ function Row(props: {
           {status === 'completed' ? tx('done') : status === 'skipped' ? tx('skipped') : status === 'current' ? tx('nowState') : ''}
         </span>
       </div>
+      </div>
       {editing && <Editor block={b} autoFocus={props.autoFocus} onClose={props.onClose} onInsert={props.onInsert} />}
       {!editing && (
         <div className="pl-insert">
           <button onClick={() => props.onInsert('task')}>{tx('addTaskHere')}</button>
           <button onClick={() => props.onInsert('break')}>{tx('addBreakHere')}</button>
           <button onClick={() => props.onInsert('session')}>{tx('addSessionHere')}</button>
-          <button className="pl-del" onClick={props.onDelete}>{tx('delete')}</button>
         </div>
       )}
     </li>

@@ -1905,15 +1905,6 @@ button.ev-row {
   font-variant-numeric: tabular-nums;
 }
 
-.pl-insert button.pl-del {
-  color: var(--danger);
-  border-color: color-mix(in srgb, var(--danger) 45%, transparent);
-}
-.pl-insert button.pl-del:hover {
-  color: #fff;
-  background: var(--danger);
-  border-color: var(--danger);
-}
 
 /* ============ brand ============ */
 .brand-logo {
@@ -1980,4 +1971,35 @@ button.ev-row {
 }
 .gate-q {
   margin-top: 18px;
+}
+
+/* swipe right to delete */
+.pl-swipe {
+  position: relative;
+  overflow: hidden;
+}
+.pl-swipe > .pl-line {
+  position: relative;
+  background: var(--bg);
+  touch-action: pan-y;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.pl-row.is-dragging .pl-swipe > .pl-line {
+  background: var(--raise);
+}
+.pl-swipe-bg {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  direction: ltr;
+  padding-left: 18px;
+  background: var(--danger);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  opacity: 0;
+  pointer-events: none;
 }
