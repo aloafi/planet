@@ -3,6 +3,9 @@ import { summaryOf } from '../lib/engine'
 import { human, signed } from '../lib/format'
 import { go } from '../lib/route'
 import { planetFx } from '../lib/fx'
+import { RecapCard, ShareButton } from './Insights'
+import { EventTag } from './Events'
+import { eventOf } from '../lib/engine'
 
 export function Summary() {
   const { state, now, act } = useStore()
@@ -17,7 +20,10 @@ export function Summary() {
   return (
     <main className="page summary">
       <header className="page-head">
-        <span className="eyebrow">{new Date(now).toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}</span>
+        <span className="eyebrow">
+          {new Date(now).toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}
+          <EventTag ev={eventOf(state, state.plan.eventId)} now={now} />
+        </span>
         <h1 className="page-title">{headline}</h1>
         {Math.abs(s.bankMs) >= 60_000 && (
           <p className={`page-sub bank-line ${s.bankMs > 0 ? 'is-ahead' : 'is-behind'}`}>
@@ -25,6 +31,8 @@ export function Summary() {
           </p>
         )}
       </header>
+
+      <RecapCard />
 
       <div className="stats">
         <Stat value={`${s.completed}`} unit={`/ ${s.total}`} label="Tasks completed" />
@@ -64,6 +72,7 @@ export function Summary() {
             }}>
               Start a new day
             </button>
+            <ShareButton />
             <button className="link" onClick={() => go('plan')}>
               Edit plan
             </button>

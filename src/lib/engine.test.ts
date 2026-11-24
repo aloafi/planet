@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { MIN, bankOf, initialState, reducer, remainingOf, currentBlock, summaryOf, progressOf, revive, type Action } from './engine'
+import { MIN, bankOf, daysUntil, initialState, reducer, remainingOf, currentBlock, summaryOf, progressOf, revive, type Action } from './engine'
 import type { AppState, Block } from './types'
 
 const T0 = new Date(2026, 10, 24, 8, 0, 0).getTime()
@@ -124,5 +124,28 @@ describe('time bank', () => {
     s = reducer(s, { type: 'SKIP', now: T0 + 99 * MIN })
     // skipped blocks don't count
     expect(bankOf(s, T0 + 99 * MIN).ms).toBe(8 * MIN)
+  })
+})
+
+describe('events and history', () => {
+  it('attaches an event, counts days, and clears it on delete', () => {
+    let s = reducer(setup(), { type: 'ADD_EVENT', event: { id: 'ev', name: 'Physics exam', date: '2026-12-06', createdAt: T0 }, attach: true })
+    expect(s.plan.eventId).toBe('ev')
+    expect(daysUntil('2026-12-06', T0)).toBe(12)
+    s = reducer(s, { type: 'DELETE_EVENT', id: 'ev' })
+    expect(s.plan.eventId).toBeNull()
+  })
+
+  it('archives a finished day with its recap', () => {
+    let s = reducer(setup(), { type: 'ADD_EVENT', event: { id: 'ev', name: 'Exam', date: '2026-12-06', createdAt: T0 }, attach: true })
+    s = run(s, { type: 'START_DAY', now: T0 }, { type: 'END_DAY', now: T0 + 30 * MIN })
+    expect(s.history).toHaveLength(1)
+    expect(s.history[0].eventName).toBe('Exam')
+    expect(s.history[0].blocks[0].spentMs).toBe(30 * MIN)
+    s = reducer(s, { type: 'SET_RECAP', recap: { title: 't', story: 's', wins: [], next: 'n', at: 1 }, now: T0 })
+    expect(s.history[0].recap?.title).toBe('t')
+    s = reducer(s, { type: 'RESET_DAY', now: T0 + 40 * MIN })
+    expect(s.history).toHaveLength(1)
+    expect(s.run.recap).toBeNull()
   })
 })

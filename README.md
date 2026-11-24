@@ -15,6 +15,21 @@ sequence; you handle the execution.
 - **Day** — the whole day at a glance: completed, current, upcoming, skipped.
 - **Summary** — tasks completed, focused time, break time, completion, and what was left.
 
+## Events, AI and sharing
+
+- **Events** — link a day's schedule to what it works toward (an exam, a deadline). The
+  countdown shows on the plan, the start screen, the overview and the summary.
+- **Forecast** — on the Plan screen, one tap asks the AI what this plan will get done if
+  you follow it, with one practical tip for the event.
+- **Recap** — when the day ends, the AI writes a short story of the day from your task
+  names, what you finished, skipped and how long each took, plus one suggestion for tomorrow.
+- **Share image** — the summary becomes a 1080×1350 image (planet, stats, tasks, recap)
+  to share, download or copy. Arabic task names are laid out right-to-left.
+
+The AI runs through `api/ai.js` (a Vercel function) on Claude Haiku. Set
+`ANTHROPIC_API_KEY` in the Vercel project's environment variables. Only task names,
+durations, statuses and event names are sent. AI can be turned off in Settings.
+
 ## Behaviour
 
 - Finishing and running out of time are different events. When a task's time is up

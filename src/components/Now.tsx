@@ -6,6 +6,8 @@ import { go } from '../lib/route'
 import type { Block } from '../lib/types'
 import { Summary } from './Summary'
 import { planetFx, type FxTint } from '../lib/fx'
+import { eventOf } from '../lib/engine'
+import { EventTag } from './Events'
 
 const tintOf = (b: Block | null | undefined): FxTint => (b?.type === 'break' ? 'break' : 'task')
 const mainButton = () => document.querySelector('.primary')
@@ -363,7 +365,10 @@ function Ready() {
       </div>
 
       <section className="focus" key={first.id}>
-        <span className="eyebrow">{continuing ? 'Up next' : 'First up'}</span>
+        <span className="eyebrow">
+          {continuing ? 'Up next' : 'First up'}
+          <EventTag ev={eventOf(state, plan.eventId)} now={Date.now()} />
+        </span>
         <h1 className={`task-name ${nameSize(first.name)}`}>{first.name || (first.type === 'break' ? 'Break' : 'Untitled task')}</h1>
         {first.description && <p className="task-desc">{first.description}</p>}
         <div className="timer">

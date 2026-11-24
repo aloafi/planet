@@ -16,6 +16,8 @@ import { parseHM, scheduleOf, statusOf, uid } from '../lib/engine'
 import { hm, human, minutesLabel } from '../lib/format'
 import { go } from '../lib/route'
 import { planetFx } from '../lib/fx'
+import { EventField } from './Events'
+import { ForecastCard } from './Insights'
 import type { Block, BlockType } from '../lib/types'
 
 export function Plan() {
@@ -55,6 +57,9 @@ export function Plan() {
       <header className="page-head">
         <span className="eyebrow">Timeline</span>
         <h1 className="page-title">Plan</h1>
+        <div className="plan-event">
+          <EventField />
+        </div>
         <p className="page-sub plan-sub">
           <label className="start-field">
             Starts
@@ -106,6 +111,8 @@ export function Plan() {
       )}
 
       <QuickAdd />
+
+      <ForecastCard />
 
       {plan.blocks.length > 0 && run.phase !== 'active' && (
         <div className="page-actions">

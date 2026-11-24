@@ -1,4 +1,4 @@
-import type { AppState, Block, BlockRecord, Plan, Run, Settings, Timer } from './types'
+import type { AppState, Block, BlockRecord, DayLog, Forecast, Plan, PlanEvent, Recap, Run, Settings, Timer } from './types'
 
 export const MIN = 60_000
 
@@ -20,6 +20,7 @@ export const freshTimer = (now: number | null, running: boolean): Timer => ({
 })
 
 export const freshRun = (now: number): Run => ({
+  id: uid(),
   date: todayKey(now),
   phase: 'idle',
   currentId: null,
@@ -28,6 +29,7 @@ export const freshRun = (now: number): Run => ({
   startedAt: null,
   endedAt: null,
   endedEarly: false,
+  recap: null,
 })
 
 export const defaultSettings: Settings = {
@@ -39,6 +41,8 @@ export const defaultSettings: Settings = {
   wakeLock: true,
   theme: 'dark',
   motion: true,
+  ai: true,
+  aiLang: 'auto',
 }
 
 export const sampleBlocks = (): Block[] => [
@@ -55,6 +59,9 @@ export const initialState = (now: number): AppState => ({
   templates: [],
   run: freshRun(now),
   settings: defaultSettings,
+  events: [],
+  history: [],
+  forecast: null,
 })
 
 /* ---------- selectors ---------- */
@@ -167,6 +174,55 @@ export const summaryOf = (s: AppState, now: number) => {
   }
 }
 
+/** whole days from today until an event date (negative = passed) */
+export const daysUntil = (date: string, now: number) => {
+  const [y, m, d] = date.split('-').map(Number)
+  const target = new Date(y, (m || 1) - 1, d || 1).getTime()
+  const t = new Date(now)
+  const today = new Date(t.getFullYear(), t.getMonth(), t.getDate()).getTime()
+  return Math.round((target - today) / 86_400_000)
+}
+
+export const eventOf = (s: AppState, id?: string | null) => (id ? s.events.find((e) => e.id === id) ?? null : null)
+
+/** changes whenever the plan meaningfully changes — used to tell if a forecast is stale */
+export const planKey = (s: AppState) =>
+  JSON.stringify([s.plan.eventId ?? null, s.plan.startTime, s.plan.blocks.map((b) => [b.type, b.name, b.duration, b.timed])])
+
+export const hasProgress = (run: Run) => Object.values(run.records).some((r) => r.status !== 'pending' || r.spentMs > 0)
+
+/** snapshot of the current day for history / AI / sharing */
+export function dayLogOf(s: AppState, now: number): DayLog {
+  const sum = summaryOf(s, now)
+  const ev = eventOf(s, s.plan.eventId)
+  return {
+    id: s.run.id,
+    date: s.run.date,
+    eventId: ev?.id ?? null,
+    eventName: ev?.name ?? null,
+    endedEarly: s.run.endedEarly,
+    blocks: s.plan.blocks.map((b) => {
+      let spent = s.run.records[b.id]?.spentMs ?? 0
+      if (b.id === s.run.currentId && s.run.phase === 'active') spent += elapsedOf(s.run.timer, now)
+      return { name: b.name || (b.type === 'break' ? 'Break' : 'Untitled task'), type: b.type, plannedMin: b.duration, spentMs: spent, status: statusOf(s.run, b.id) }
+    }),
+    focusedMs: sum.focusedMs,
+    breakMs: sum.breakMs,
+    bankMs: sum.bankMs,
+    completed: sum.completed,
+    total: sum.total,
+    recap: s.run.recap ?? null,
+  }
+}
+
+/** keep a record of a day that had any progress */
+function archive(s: AppState, now: number): AppState {
+  if (!hasProgress(s.run) || !s.plan.blocks.length) return s
+  const log = dayLogOf(s, now)
+  const history = [log, ...s.history.filter((h) => h.id !== log.id)].slice(0, 90)
+  return { ...s, history }
+}
+
 /* ---------- actions ---------- */
 
 export type Action =
@@ -194,6 +250,11 @@ export type Action =
   | { type: 'LOAD_TEMPLATE'; id: string; now: number }
   | { type: 'DELETE_TEMPLATE'; id: string }
   | { type: 'SETTINGS'; patch: Partial<Settings> }
+  | { type: 'ADD_EVENT'; event: PlanEvent; attach?: boolean }
+  | { type: 'DELETE_EVENT'; id: string }
+  | { type: 'SET_PLAN_EVENT'; id: string | null }
+  | { type: 'SET_FORECAST'; forecast: Forecast | null }
+  | { type: 'SET_RECAP'; recap: Recap | null; now: number }
 
 const rec = (run: Run, id: string): BlockRecord => run.records[id] ?? { status: 'pending', spentMs: 0 }
 
@@ -246,6 +307,13 @@ function repairRun(s: AppState, now: number): AppState {
 }
 
 export function reducer(s: AppState, a: Action): AppState {
+  const next = step(s, a)
+  // a finished day is written to history as soon as it finishes (and kept up to date)
+  if (next !== s && next.run.phase === 'done' && a.type !== 'HYDRATE') return archive(next, 'now' in a ? a.now : Date.now())
+  return next
+}
+
+function step(s: AppState, a: Action): AppState {
   switch (a.type) {
     case 'HYDRATE':
       return a.state
@@ -344,7 +412,7 @@ export function reducer(s: AppState, a: Action): AppState {
     }
 
     case 'RESET_DAY':
-      return { ...s, run: freshRun(a.now) }
+      return { ...archive(s, a.now), run: freshRun(a.now) }
 
     case 'ADD_BLOCK': {
       const blocks = [...s.plan.blocks]
@@ -382,9 +450,10 @@ export function reducer(s: AppState, a: Action): AppState {
       return { ...s, plan: { ...s.plan, startTime: a.value } }
 
     case 'SET_BLOCKS':
+      s = archive(s, a.now)
       return {
         ...s,
-        plan: { startTime: a.startTime ?? s.plan.startTime, blocks: a.blocks.map(sanitize) },
+        plan: { startTime: a.startTime ?? s.plan.startTime, blocks: a.blocks.map(sanitize), eventId: a.blocks.length ? s.plan.eventId ?? null : null },
         run: freshRun(a.now),
       }
 
@@ -393,8 +462,8 @@ export function reducer(s: AppState, a: Action): AppState {
       const copy = s.plan.blocks.map((b) => ({ ...b }))
       const existing = s.templates.find((t) => t.name.toLowerCase() === name.toLowerCase())
       const templates = existing
-        ? s.templates.map((t) => (t.id === existing.id ? { ...t, startTime: s.plan.startTime, blocks: copy, createdAt: a.now } : t))
-        : [...s.templates, { id: uid(), name, startTime: s.plan.startTime, blocks: copy, createdAt: a.now }]
+        ? s.templates.map((t) => (t.id === existing.id ? { ...t, startTime: s.plan.startTime, blocks: copy, createdAt: a.now, eventId: s.plan.eventId ?? null } : t))
+        : [...s.templates, { id: uid(), name, startTime: s.plan.startTime, blocks: copy, createdAt: a.now, eventId: s.plan.eventId ?? null }]
       return { ...s, templates }
     }
 
@@ -403,7 +472,8 @@ export function reducer(s: AppState, a: Action): AppState {
       if (!t) return s
       // fresh ids so a template can be loaded repeatedly without collisions
       const blocks = t.blocks.map((b) => ({ ...b, id: uid() }))
-      return { ...s, plan: { startTime: t.startTime, blocks }, run: freshRun(a.now) }
+      const eventId = t.eventId && s.events.some((e) => e.id === t.eventId) ? t.eventId : null
+      return { ...archive(s, a.now), plan: { startTime: t.startTime, blocks, eventId }, run: freshRun(a.now) }
     }
 
     case 'DELETE_TEMPLATE':
@@ -411,6 +481,30 @@ export function reducer(s: AppState, a: Action): AppState {
 
     case 'SETTINGS':
       return { ...s, settings: { ...s.settings, ...a.patch } }
+
+    case 'ADD_EVENT': {
+      const events = [...s.events, a.event].sort((x, y) => x.date.localeCompare(y.date))
+      return { ...s, events, plan: a.attach ? { ...s.plan, eventId: a.event.id } : s.plan }
+    }
+
+    case 'DELETE_EVENT':
+      return {
+        ...s,
+        events: s.events.filter((e) => e.id !== a.id),
+        plan: s.plan.eventId === a.id ? { ...s.plan, eventId: null } : s.plan,
+        templates: s.templates.map((t) => (t.eventId === a.id ? { ...t, eventId: null } : t)),
+      }
+
+    case 'SET_PLAN_EVENT':
+      return { ...s, plan: { ...s.plan, eventId: a.id } }
+
+    case 'SET_FORECAST':
+      return { ...s, forecast: a.forecast }
+
+    case 'SET_RECAP': {
+      const next = { ...s, run: { ...s.run, recap: a.recap } }
+      return { ...next, history: next.history.map((h) => (h.id === next.run.id ? { ...h, recap: a.recap } : h)) }
+    }
   }
 }
 
@@ -437,8 +531,15 @@ export function revive(raw: unknown, now: number): AppState {
     templates: Array.isArray(r.templates) ? r.templates : [],
     settings: { ...defaultSettings, ...(r.settings ?? {}) },
     run: r.run && typeof r.run === 'object' ? { ...freshRun(now), ...r.run, timer: { ...freshTimer(null, false), ...r.run.timer } } : freshRun(now),
+    events: Array.isArray(r.events) ? r.events.filter((e) => e && typeof e.id === 'string' && typeof e.date === 'string') : [],
+    history: Array.isArray(r.history) ? r.history : [],
+    forecast: r.forecast && typeof r.forecast === 'object' ? r.forecast : null,
   }
+  if (s.plan.eventId && !s.events.some((e) => e.id === s.plan.eventId)) s.plan = { ...s.plan, eventId: null }
   // a finished (or never-started) day from an earlier date rolls over to a fresh day
-  if (s.run.date !== todayKey(now) && s.run.phase !== 'active') s.run = freshRun(now)
+  if (s.run.date !== todayKey(now) && s.run.phase !== 'active') {
+    s.history = archive(s, now).history
+    s.run = freshRun(now)
+  }
   return repairRun(settleBreaks(s, now), now)
 }

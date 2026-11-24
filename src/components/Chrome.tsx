@@ -110,6 +110,22 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
           <Toggle label="Keep screen awake while a timer runs" on={s.wakeLock} onChange={(v) => set({ wakeLock: v })} />
         </Group>
 
+        <Group title="AI">
+          <Toggle label="AI insights" note="A forecast for your plan and a short recap when the day ends. Nothing on the task screen." on={s.ai} onChange={(v) => set({ ai: v })} />
+          {s.ai && (
+            <Choice
+              label="AI language"
+              value={s.aiLang}
+              options={[
+                ['auto', 'Auto'],
+                ['en', 'English'],
+                ['ar', 'العربية'],
+              ]}
+              onChange={(v) => set({ aiLang: v as S['aiLang'] })}
+            />
+          )}
+        </Group>
+
         <Group title="Appearance">
           <Choice
             label="Theme"
@@ -136,7 +152,7 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
           </dl>
         </Group>
 
-        <p className="sheet-foot">Everything is saved on this device.</p>
+        <p className="sheet-foot">Everything is saved on this device. AI requests send only task names, times and event names.</p>
       </div>
     </div>
   )

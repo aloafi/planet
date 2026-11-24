@@ -15,6 +15,56 @@ export interface Plan {
   /** HH:MM, used to show clock times on the timeline */
   startTime: string
   blocks: Block[]
+  /** the event (exam, deadline…) this schedule works toward */
+  eventId?: string | null
+}
+
+export interface PlanEvent {
+  id: string
+  name: string
+  /** YYYY-MM-DD */
+  date: string
+  createdAt: number
+}
+
+export interface Forecast {
+  /** fingerprint of the plan it was made for */
+  key: string
+  headline: string
+  outcomes: string[]
+  tip: string
+  at: number
+}
+
+export interface Recap {
+  title: string
+  story: string
+  wins: string[]
+  next: string
+  at: number
+}
+
+export interface DayLogBlock {
+  name: string
+  type: BlockType
+  plannedMin: number
+  spentMs: number
+  status: BlockStatus
+}
+
+export interface DayLog {
+  id: string
+  date: string
+  eventId: string | null
+  eventName: string | null
+  endedEarly: boolean
+  blocks: DayLogBlock[]
+  focusedMs: number
+  breakMs: number
+  bankMs: number
+  completed: number
+  total: number
+  recap: Recap | null
 }
 
 export interface Template {
@@ -23,6 +73,7 @@ export interface Template {
   startTime: string
   blocks: Block[]
   createdAt: number
+  eventId?: string | null
 }
 
 export type BlockStatus = 'pending' | 'completed' | 'skipped'
@@ -53,6 +104,7 @@ export interface Timer {
 export type Phase = 'idle' | 'active' | 'done'
 
 export interface Run {
+  id: string
   date: string
   phase: Phase
   currentId: string | null
@@ -62,6 +114,8 @@ export interface Run {
   endedAt: number | null
   /** true when the day was ended manually before every block was handled */
   endedEarly: boolean
+  /** AI recap of this day, once written */
+  recap?: Recap | null
 }
 
 export interface Settings {
@@ -77,6 +131,9 @@ export interface Settings {
   theme: 'dark' | 'light'
   /** planet transitions */
   motion: boolean
+  /** AI forecast + end-of-day recap */
+  ai: boolean
+  aiLang: 'auto' | 'en' | 'ar'
 }
 
 export interface AppState {
@@ -85,4 +142,7 @@ export interface AppState {
   templates: Template[]
   run: Run
   settings: Settings
+  events: PlanEvent[]
+  history: DayLog[]
+  forecast: Forecast | null
 }

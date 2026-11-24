@@ -4,6 +4,8 @@ import { bankOf, progressOf, scheduleOf, statusOf } from '../lib/engine'
 import { hm, minutesLabel, signed } from '../lib/format'
 import { go } from '../lib/route'
 import { planetFx } from '../lib/fx'
+import { EventTag } from './Events'
+import { eventOf } from '../lib/engine'
 
 type Visual = 'completed' | 'current' | 'upcoming' | 'skipped'
 
@@ -38,7 +40,7 @@ export function Day() {
   return (
     <main className="page">
       <header className="page-head">
-        <span className="eyebrow">Overview</span>
+        <span className="eyebrow">Overview<EventTag ev={eventOf(state, plan.eventId)} now={now} /></span>
         <h1 className="page-title">Today</h1>
         <p className="page-sub">
           {p.completed} of {p.total} tasks completed · {Math.round(p.ratio * 100)}% handled

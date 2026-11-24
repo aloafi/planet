@@ -66,7 +66,7 @@ body {
   min-height: 100dvh;
   background: var(--bg);
   color: var(--text);
-  font-family: 'Geist Variable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-family: 'Geist Variable', 'IBM Plex Sans Arabic', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
   font-size: 16px;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
@@ -118,7 +118,7 @@ ul {
 
 .timer-digits,
 .stat-value {
-  font-family: 'Geist Variable', ui-sans-serif, system-ui, sans-serif;
+  font-family: 'Geist Variable', 'IBM Plex Sans Arabic', ui-sans-serif, system-ui, sans-serif;
   font-variant-numeric: tabular-nums;
 }
 
@@ -1476,4 +1476,332 @@ body[data-mode='break'] .bank.is-ahead .bank-value {
   .bank {
     padding: 4px 10px;
   }
+}
+
+/* ============ events ============ */
+.plan-event {
+  margin-top: 18px;
+}
+.event-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  max-width: 100%;
+  height: 40px;
+  padding: 0 16px 0 12px;
+  border-radius: 999px;
+  border: 1px dashed var(--line-strong);
+  background: none;
+  color: var(--text-2);
+  font-size: 14px;
+  transition: border-color 0.2s, color 0.2s;
+}
+.event-chip:hover {
+  color: var(--text);
+  border-color: var(--text-3);
+}
+.event-chip.has-event {
+  border-style: solid;
+  color: var(--text);
+}
+.event-ring {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 1.5px solid currentColor;
+  box-shadow: 0 0 0 3px var(--bg), 0 0 0 4px color-mix(in srgb, currentColor 40%, transparent);
+  transform: scaleY(0.9);
+}
+.has-event .event-ring {
+  background: var(--break);
+  border-color: var(--break);
+}
+.event-name {
+  font-weight: 560;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.has-event .event-when {
+  color: var(--text-3);
+  white-space: nowrap;
+}
+.eyebrow-event {
+  color: var(--break);
+  letter-spacing: 0.08em;
+}
+.sheet-note {
+  margin-top: 10px;
+  color: var(--text-3);
+  font-size: 14px;
+}
+.ev-list {
+  margin-top: 18px;
+  border-top: 1px solid var(--line);
+}
+.ev-row {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 4px 0;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  background: none;
+  text-align: left;
+}
+button.ev-row {
+  padding: 14px 0;
+}
+.ev-pick {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 0;
+  background: none;
+  border: 0;
+  text-align: left;
+}
+button.ev-row {
+  display: flex;
+  justify-content: flex-start;
+  gap: 14px;
+}
+.ev-radio {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 1.5px solid var(--text-3);
+}
+.ev-row.on .ev-radio {
+  border: 5px solid var(--text);
+}
+.ev-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.ev-name {
+  font-size: 15px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ev-meta {
+  font-size: 13px;
+  color: var(--text-3);
+}
+.ev-row.is-past .ev-name {
+  color: var(--text-3);
+}
+.ev-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 10px;
+}
+.ev-form input {
+  flex: 1 1 160px;
+  height: 44px;
+  padding: 0 14px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: var(--bg);
+  font-size: 15px;
+  outline: none;
+}
+.ev-form input:focus {
+  border-color: var(--text-3);
+}
+.ev-form .chip {
+  height: 44px;
+}
+
+/* ============ AI ============ */
+.ai-dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--break);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--break) 22%, transparent);
+}
+.ai-row {
+  margin-top: 26px;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  color: var(--text-2);
+  font-size: 15px;
+}
+.ai-card {
+  margin-top: 28px;
+  padding: 22px 24px 24px;
+  border-radius: 18px;
+  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--raise) 70%, transparent);
+  animation: fade 0.4s ease both;
+  transition: opacity 0.3s;
+}
+.ai-card.is-stale > div {
+  opacity: 0.55;
+}
+.summary .ai-card {
+  margin: 0 0 36px;
+}
+.ai-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.ai-head .link {
+  padding: 2px 0;
+  font-size: 13px;
+}
+.ai-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+.ai-headline {
+  margin-top: 14px;
+  font-size: clamp(20px, 2.4vw, 24px);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+}
+.ai-story {
+  margin-top: 10px;
+  color: var(--text-2);
+  font-size: 15.5px;
+  line-height: 1.6;
+}
+.ai-list {
+  margin-top: 14px;
+  display: grid;
+  gap: 8px;
+}
+.ai-list li {
+  position: relative;
+  padding-inline-start: 20px;
+  font-size: 15px;
+  line-height: 1.45;
+}
+.ai-list li::before {
+  content: '';
+  position: absolute;
+  inset-inline-start: 2px;
+  top: 0.6em;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  border: 1.5px solid var(--text-3);
+}
+.ai-tip {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+  color: var(--text-2);
+  font-size: 14px;
+  line-height: 1.5;
+}
+.ai-next {
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--break);
+  margin-inline-end: 6px;
+}
+.ai-err {
+  flex-basis: 100%;
+  margin-top: 10px;
+  color: var(--over);
+  font-size: 13.5px;
+}
+.shimmer {
+  margin-top: 16px;
+  display: grid;
+  gap: 10px;
+}
+.shimmer i {
+  display: block;
+  height: 12px;
+  border-radius: 6px;
+  background: linear-gradient(90deg, var(--line) 0%, var(--line-strong) 50%, var(--line) 100%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s linear infinite;
+}
+@keyframes shimmer {
+  to {
+    background-position: -200% 0;
+  }
+}
+.sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+}
+
+/* ============ share ============ */
+.share {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: min(440px, calc(100% - 32px));
+  max-height: calc(100dvh - 32px);
+  overflow: auto;
+  padding: 16px;
+  border-radius: 22px;
+  background: var(--raise);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow);
+  animation: fadein 0.25s ease both;
+}
+.share-img img,
+.share-wait {
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 5;
+  border-radius: 14px;
+  background: #0b0b0c;
+}
+.share-wait {
+  display: grid;
+  place-items: center;
+  color: var(--text-3);
+  font-size: 14px;
+}
+.share-actions {
+  margin-top: 14px;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.share-actions a.chip {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+}
+.share-actions .link {
+  margin-left: auto;
+}
+.share-note {
+  margin-top: 8px;
+  font-size: 13px;
+  color: var(--text-3);
 }
