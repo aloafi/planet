@@ -33,7 +33,6 @@ export function ForecastCard() {
   if (!f && !busy) {
     return (
       <div className="ai-row">
-        <span className="ai-dot" aria-hidden />
         <span className="ai-q">{eventOf(state, state.plan.eventId) ? 'What will this plan do for your event?' : 'What will this plan get done?'}</span>
         <button className="link" onClick={run}>Forecast</button>
         {err && <p className="ai-err">{err}</p>}
@@ -45,8 +44,7 @@ export function ForecastCard() {
     <section className={`ai-card ${stale ? 'is-stale' : ''}`} aria-busy={busy}>
       <header className="ai-head">
         <span className="ai-tag">
-          <span className="ai-dot" aria-hidden />
-          {stale ? 'Forecast · plan changed' : 'If you follow this plan'}
+            {stale ? 'Forecast · plan changed' : 'If you follow this plan'}
         </span>
         <button className="link quiet" onClick={run} disabled={busy}>
           {busy ? 'Thinking…' : stale ? 'Update' : 'Refresh'}
@@ -110,8 +108,7 @@ export function RecapCard() {
     <section className="ai-card recap" aria-busy={busy}>
       <header className="ai-head">
         <span className="ai-tag">
-          <span className="ai-dot" aria-hidden />
-          Your day
+            Your day
         </span>
         {(recap || err) && (
           <button className="link quiet" onClick={run} disabled={busy}>
@@ -125,13 +122,6 @@ export function RecapCard() {
         <div dir="auto">
           <p className="ai-headline">{recap.title}</p>
           <p className="ai-story">{recap.story}</p>
-          {recap.wins.length > 0 && (
-            <ul className="ai-list">
-              {recap.wins.map((w, i) => (
-                <li key={i}>{w}</li>
-              ))}
-            </ul>
-          )}
           {recap.next && (
             <p className="ai-tip">
               <span className="ai-next">Tomorrow</span> {recap.next}
