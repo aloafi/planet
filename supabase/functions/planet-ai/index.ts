@@ -24,6 +24,8 @@ async function apiKey(): Promise<string> {
 }
 
 const allowed = (o: string) =>
+  o === 'https://www.tryplanet.site' ||
+  o === 'https://tryplanet.site' ||
   o === 'https://planet-plum.vercel.app' ||
   (o.startsWith('https://planet-') && o.endsWith('.vercel.app')) ||
   o.startsWith('http://localhost:') ||
@@ -31,7 +33,7 @@ const allowed = (o: string) =>
 
 function cors(origin: string | null) {
   return {
-    'Access-Control-Allow-Origin': origin && allowed(origin) ? origin : 'https://planet-plum.vercel.app',
+    'Access-Control-Allow-Origin': origin && allowed(origin) ? origin : 'https://www.tryplanet.site',
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
     'Access-Control-Allow-Headers': 'content-type, apikey, authorization, x-client-info',
     Vary: 'Origin',

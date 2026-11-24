@@ -309,6 +309,8 @@ export type Action =
   | { type: 'SET_FORECAST'; forecast: Forecast | null }
   | { type: 'SET_RECAP'; recap: Recap | null; now: number }
   | { type: 'TAKE_BONUS_BREAK'; minutes: number; name: string; now: number }
+  | { type: 'IMPORT_STATE'; state: AppState; now: number }
+  | { type: 'APPEND_BLOCKS'; blocks: Block[]; now: number }
   | { type: 'CONTINUE_SESSION'; now: number }
 
 const rec = (run: Run, id: string): BlockRecord => run.records[id] ?? { status: 'pending', spentMs: 0 }
@@ -579,6 +581,22 @@ function step(s: AppState, a: Action): AppState {
       blocks.splice(lastIdx + 1, 0, block)
       return { ...s, plan: { ...s.plan, blocks }, run: { ...s.run, gate: null, currentId: block.id, timer: freshTimer(a.now, true) } }
     }
+
+    case 'IMPORT_STATE': {
+      // bring back a saved copy: its plan and today's progress, merged with what's here
+      const inc = a.state
+      const base = archive(s, a.now)
+      const templates = [...base.templates, ...inc.templates.filter((t) => !base.templates.some((x) => x.name.toLowerCase() === t.name.toLowerCase()))]
+      const events = [...base.events, ...inc.events.filter((e) => !base.events.some((x) => x.id === e.id))].sort((x, y) => x.date.localeCompare(y.date))
+      const history = [...base.history, ...inc.history.filter((h) => !base.history.some((x) => x.id === h.id))]
+        .sort((x, y) => y.date.localeCompare(x.date))
+        .slice(0, 90)
+      const run = inc.run && inc.run.date === todayKey(a.now) ? inc.run : freshRun(a.now)
+      return { ...base, plan: { ...inc.plan, blocks: inc.plan.blocks.map(sanitize) }, templates, events, history, run, forecast: null }
+    }
+
+    case 'APPEND_BLOCKS':
+      return { ...s, plan: { ...s.plan, blocks: [...s.plan.blocks, ...a.blocks.map(sanitize)] } }
 
     case 'CONTINUE_SESSION': {
       if (!s.run.gate) return s

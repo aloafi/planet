@@ -9,6 +9,7 @@ import { Now } from './components/Now'
 import { Plan } from './components/Plan'
 import { Day } from './components/Day'
 import { Summary } from './components/Summary'
+import { Recover } from './components/Recover'
 import { Nav, SettingsSheet, UndoToast } from './components/Chrome'
 
 function Shell() {
@@ -44,6 +45,7 @@ function Shell() {
         {route === 'plan' && <Plan />}
         {route === 'day' && <Day />}
         {route === 'summary' && <Summary />}
+        {route === 're' && <Recover />}
       </div>
       <UndoToast />
       {settings && <SettingsSheet onClose={closeSettings} />}
