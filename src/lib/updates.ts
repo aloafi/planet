@@ -25,7 +25,15 @@ export function watchForUpdates() {
     checking = true
     const next = await latest()
     checking = false
-    if (next && next !== mine) location.reload()
+    if (!next || next === mine) return
+    // reload once per new build — never loop if the page still comes back stale
+    try {
+      if (sessionStorage.getItem('planet:reloaded-for') === next) return
+      sessionStorage.setItem('planet:reloaded-for', next)
+    } catch {
+      return
+    }
+    location.reload()
   }
   document.addEventListener('visibilitychange', check)
   window.addEventListener('focus', check)
