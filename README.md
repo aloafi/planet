@@ -38,7 +38,10 @@ turned off in Settings.
 - Breaks end on their own and the next task starts (configurable).
 - Timers are stored as timestamps, so they stay exact after a refresh, a closed tab or
   a sleeping phone.
-- Everything is saved in the browser (localStorage). No account needed.
+- Works without an account (saved on the device). Sign in / Sign up (Supabase Auth)
+  saves everything to your account — table `planet_state`, one JSON document per user,
+  protected by row-level security — and keeps every signed-in device in sync. A copy
+  stays on the device so it works offline; the most recently changed copy wins.
 
 Keyboard: `Enter` finish · `Space` pause/resume · `E` +5 min · `S` skip.
 

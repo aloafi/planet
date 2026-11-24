@@ -2003,3 +2003,177 @@ button.ev-row {
   opacity: 0;
   pointer-events: none;
 }
+
+/* ============ account ============ */
+.auth-links {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-inline-start: 10px;
+}
+.nav-links .auth-links button {
+  height: 34px;
+  padding: 0 14px;
+  border-radius: 999px;
+  font-size: 14px;
+  white-space: nowrap;
+}
+.nav-links .auth-in {
+  background: none;
+  border: 0;
+  color: var(--text-2);
+}
+.nav-links .auth-in:hover {
+  color: var(--text);
+}
+.nav-links .auth-up {
+  background: var(--text);
+  color: var(--bg);
+  border: 0;
+  font-weight: 560;
+}
+.acct {
+  position: relative;
+  margin-inline-start: 10px;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 1px solid var(--line-strong);
+  background: none;
+  display: grid;
+  place-items: center;
+  padding: 0 !important;
+}
+.acct-initial {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+}
+.acct .acct-dot {
+  position: absolute;
+  right: -1px;
+  bottom: -1px;
+  box-shadow: 0 0 0 2px var(--bg);
+}
+.acct-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--text-3);
+}
+.sync-saved .acct-dot {
+  background: var(--text);
+}
+.sync-syncing .acct-dot {
+  background: var(--text-2);
+  animation: breathe 1.2s ease-in-out infinite;
+}
+.sync-offline .acct-dot,
+.sync-error .acct-dot {
+  background: var(--over);
+}
+.auth {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: min(400px, calc(100% - 32px));
+  max-height: calc(100dvh - 32px);
+  overflow: auto;
+  padding: 30px 28px 24px;
+  background: var(--raise);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow);
+  animation: fadein 0.25s ease both;
+}
+.auth-logo {
+  width: 44px;
+  display: block;
+  margin-bottom: 18px;
+}
+[data-theme='light'] .auth-logo {
+  filter: invert(1);
+  opacity: 0.85;
+}
+.auth h2 {
+  font-size: 26px;
+  font-weight: 620;
+  letter-spacing: -0.03em;
+}
+.auth-note {
+  margin-top: 8px;
+  color: var(--text-3);
+  font-size: 14px;
+  line-height: 1.5;
+}
+.auth .field input {
+  background: var(--bg);
+}
+.auth-hint {
+  color: var(--text-3);
+  font-size: 12px;
+}
+.auth-error {
+  margin-top: 14px;
+  color: var(--danger);
+  font-size: 14px;
+}
+.auth-ok {
+  margin-top: 14px;
+  color: var(--text-2);
+  font-size: 14px;
+}
+.auth-submit {
+  margin-top: 22px;
+  width: 100% !important;
+}
+.auth-switch {
+  margin-top: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  font-size: 14px;
+  color: var(--text-3);
+}
+.auth-switch .link {
+  font-size: 14px;
+}
+.acct-email {
+  margin-top: 6px;
+  font-size: 15px;
+  color: var(--text);
+  text-align: start;
+}
+.acct-status {
+  margin-top: 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  color: var(--text-2);
+}
+@media (max-width: 640px) {
+  .auth-links {
+    margin-inline-start: 4px;
+  }
+  .nav-links .auth-links button {
+    padding: 0 10px;
+    font-size: 13px;
+  }
+  /* phones: the logo mark alone, so the nav fits Sign in · Sign up */
+  .wordmark .brand-logo {
+    height: 24px;
+    aspect-ratio: 1965 / 1496;
+    -webkit-mask-image: url('/brand/planet-mark.png');
+    mask-image: url('/brand/planet-mark.png');
+  }
+  .nav-links button {
+    padding: 8px 7px;
+  }
+  .nav-settings {
+    margin-inline-start: 0;
+  }
+}

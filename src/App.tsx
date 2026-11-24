@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { StoreProvider, useStore } from './lib/store'
+import { CloudProvider } from './lib/cloud'
 import { useRoute } from './lib/route'
 import { currentBlock, remainingOf, elapsedOf } from './lib/engine'
 import { clock, stopwatch } from './lib/format'
@@ -53,7 +54,9 @@ function Shell() {
 export default function App() {
   return (
     <StoreProvider>
-      <Shell />
+      <CloudProvider>
+        <Shell />
+      </CloudProvider>
     </StoreProvider>
   )
 }

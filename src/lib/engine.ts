@@ -65,6 +65,7 @@ export const sampleBlocks = (): Block[] =>
 
 export const initialState = (now: number): AppState => ({
   version: 1,
+  updatedAt: 0,
   plan: { startTime: '08:00', blocks: [] },
   templates: [],
   run: freshRun(now),
@@ -367,10 +368,14 @@ function repairRun(s: AppState, now: number): AppState {
   return s
 }
 
+/** actions that are bookkeeping, not changes made by the user */
+const PASSIVE = new Set<Action['type']>(['HYDRATE', 'TICK', 'MARK_ALERTED'])
+
 export function reducer(s: AppState, a: Action): AppState {
-  const next = step(s, a)
+  let next = step(s, a)
   // a finished day is written to history as soon as it finishes (and kept up to date)
-  if (next !== s && next.run.phase === 'done' && a.type !== 'HYDRATE') return archive(next, 'now' in a ? a.now : Date.now())
+  if (next !== s && next.run.phase === 'done' && a.type !== 'HYDRATE') next = archive(next, 'now' in a ? a.now : Date.now())
+  if (next !== s && !PASSIVE.has(a.type)) next = { ...next, updatedAt: Math.max(Date.now(), (s.updatedAt || 0) + 1) }
   return next
 }
 
@@ -609,6 +614,7 @@ export function revive(raw: unknown, now: number): AppState {
   const blocks = Array.isArray(r.plan?.blocks) ? r.plan!.blocks.filter((b) => b && typeof b.id === 'string').map(sanitize) : []
   const s: AppState = {
     version: 1,
+    updatedAt: typeof r.updatedAt === 'number' ? r.updatedAt : 0,
     plan: { startTime: typeof r.plan?.startTime === 'string' ? r.plan.startTime : '08:00', blocks },
     templates: Array.isArray(r.templates) ? r.templates : [],
     settings: {

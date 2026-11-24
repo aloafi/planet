@@ -3,6 +3,7 @@ import { useStore } from '../lib/store'
 import { go, type Route } from '../lib/route'
 import type { Settings as S } from '../lib/types'
 import { t } from '../lib/i18n'
+import { AuthButtons } from './Account'
 
 export function Nav({ route, onSettings }: { route: Route; onSettings: () => void }) {
   const items: [Route, string][] = [
@@ -29,6 +30,7 @@ export function Nav({ route, onSettings }: { route: Route; onSettings: () => voi
             <circle cx="7" cy="14" r="2" />
           </svg>
         </button>
+        <AuthButtons />
       </nav>
     </header>
   )

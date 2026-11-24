@@ -144,6 +144,8 @@ export interface Settings {
 
 export interface AppState {
   version: 1
+  /** last time the user changed something (ms) — decides which copy wins when syncing */
+  updatedAt: number
   plan: Plan
   templates: Template[]
   run: Run
