@@ -1,5 +1,6 @@
 import { daysUntil, eventOf, summaryOf, tasksOf } from './engine'
 import type { AppState, DayLog, Forecast, Recap } from './types'
+import { t } from './i18n'
 
 const MIN = 60_000
 /** Supabase Edge Function that holds the Anthropic key (see supabase/functions/planet-ai) */
@@ -18,13 +19,13 @@ export function aiErrorText(e: unknown) {
   const code = e instanceof AIError ? e.code : 'network'
   switch (code) {
     case 'no_key':
-      return 'AI isn’t connected yet — the Anthropic key wasn’t found in Supabase.'
+      return t('aiNoKey')
     case 'bad_key':
-      return 'The Anthropic API key was rejected. Check it in Supabase.'
+      return t('aiBadKey')
     case 'rate':
-      return 'Too many requests. Try again in a minute.'
+      return t('aiRate')
     default:
-      return 'Couldn’t reach the AI right now. Try again.'
+      return t('aiDown')
   }
 }
 
@@ -71,7 +72,7 @@ export async function forecastPlan(s: AppState, now: number, key: string): Promi
     startsAt: s.plan.startTime,
     blocks: s.plan.blocks.map((b) => ({
       type: b.type,
-      name: b.name || (b.type === 'break' ? 'Break' : 'Untitled task'),
+      name: b.name || (b.type === 'break' ? t('break') : t('untitled')),
       minutes: b.duration,
       ...(b.type === 'task' && !b.timed ? { untimed: true } : {}),
       ...(b.description ? { note: b.description } : {}),
@@ -83,7 +84,7 @@ export async function forecastPlan(s: AppState, now: number, key: string): Promi
     },
     recentDays: recent,
   }
-  const r = await ask<Omit<Forecast, 'key' | 'at'>>('forecast', payload, s.settings.aiLang)
+  const r = await ask<Omit<Forecast, 'key' | 'at'>>('forecast', payload, s.settings.lang)
   return { ...r, key, at: Date.now() }
 }
 
@@ -106,6 +107,6 @@ export async function recapDay(s: AppState, now: number, log?: DayLog): Promise<
     completed: sum.completed,
     totalTasks: sum.total,
   }
-  const r = await ask<Omit<Recap, 'at'>>('recap', payload, s.settings.aiLang)
+  const r = await ask<Omit<Recap, 'at'>>('recap', payload, s.settings.lang)
   return { ...r, at: Date.now() }
 }

@@ -149,3 +149,11 @@ describe('events and history', () => {
     expect(s.run.recap).toBeNull()
   })
 })
+
+describe('time bank ignores off-the-clock finishes', () => {
+  it('a task marked done in seconds is not "saved" time', () => {
+    const s = run(setup(), { type: 'START_DAY', now: T0 }, { type: 'FINISH', now: T0 + 5000 })
+    expect(bankOf(s, T0 + 5000).ms).toBe(0)
+    expect(bankOf(s, T0 + 5000).counted).toBe(0)
+  })
+})

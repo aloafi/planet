@@ -3,6 +3,7 @@ import { currentBlock, reducer, remainingOf, revive, type Action } from './engin
 import type { AppState, Block, Settings } from './types'
 import { chime, unlockAudio } from './sound'
 import { setFxEnabled } from './fx'
+import { setLang, t } from './i18n'
 
 const KEY = 'planet:v1'
 
@@ -40,6 +41,8 @@ function load(): AppState {
 
 export function StoreProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(reducer, undefined, load)
+  // language is read synchronously by t() and the formatters during this render
+  setLang(state.settings.lang)
   const [now, setNow] = useState(() => Date.now())
   const [undo, setUndo] = useState<Undo | null>(null)
   const ref = useRef(state)
@@ -162,6 +165,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => setFxEnabled(state.settings.motion), [state.settings.motion])
 
+  useEffect(() => {
+    document.documentElement.lang = state.settings.lang
+    document.documentElement.dir = state.settings.lang === 'ar' ? 'rtl' : 'ltr'
+  }, [state.settings.lang])
+
   // theme
   useEffect(() => {
     document.documentElement.dataset.theme = state.settings.theme
@@ -177,8 +185,8 @@ function alertTimeUp(b: Block, settings: Settings) {
   if (settings.sound) chime(b.type === 'break' ? 'up' : 'down')
   if (settings.notify && document.visibilityState !== 'visible' && 'Notification' in window && Notification.permission === 'granted') {
     try {
-      new Notification(b.type === 'break' ? 'Break is over' : `Time’s up — ${b.name || 'Task'}`, {
-        body: b.type === 'break' ? 'Back to work.' : 'Finish, extend or skip.',
+      new Notification(b.type === 'break' ? t('nBreakOver') : t('nTimesUp', { name: b.name || t('task') }), {
+        body: b.type === 'break' ? t('nBackToWork') : t('nChoose'),
         tag: 'planet-timer',
       })
     } catch {

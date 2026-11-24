@@ -133,7 +133,8 @@ export interface Settings {
   motion: boolean
   /** AI forecast + end-of-day recap */
   ai: boolean
-  aiLang: 'auto' | 'en' | 'ar'
+  /** site language — the AI writes in it too */
+  lang: 'en' | 'ar'
 }
 
 export interface AppState {

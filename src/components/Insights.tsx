@@ -5,6 +5,7 @@ import { AIError, aiErrorText, forecastPlan, recapDay } from '../lib/ai'
 import { dayLogOf, eventOf, planKey, tasksOf } from '../lib/engine'
 import { renderDayCard } from '../lib/shareCard'
 import { eventLine } from './Events'
+import { fmtDate, t } from '../lib/i18n'
 
 /* ---------- forecast (Plan screen) ---------- */
 
@@ -33,8 +34,8 @@ export function ForecastCard() {
   if (!f && !busy) {
     return (
       <div className="ai-row">
-        <span className="ai-q">{eventOf(state, state.plan.eventId) ? 'What will this plan do for your event?' : 'What will this plan get done?'}</span>
-        <button className="link" onClick={run}>Forecast</button>
+        <span className="ai-q">{eventOf(state, state.plan.eventId) ? t('forecastEventQ') : t('forecastQ')}</span>
+        <button className="link" onClick={run}>{t('forecast')}</button>
         {err && <p className="ai-err">{err}</p>}
       </div>
     )
@@ -44,10 +45,10 @@ export function ForecastCard() {
     <section className={`ai-card ${stale ? 'is-stale' : ''}`} aria-busy={busy}>
       <header className="ai-head">
         <span className="ai-tag">
-            {stale ? 'Forecast · plan changed' : 'If you follow this plan'}
+            {stale ? t('forecastStale') : t('ifYouFollow')}
         </span>
         <button className="link quiet" onClick={run} disabled={busy}>
-          {busy ? 'Thinking…' : stale ? 'Update' : 'Refresh'}
+          {busy ? t('thinking') : stale ? t('update') : t('refresh')}
         </button>
       </header>
       {busy && !f ? (
@@ -108,23 +109,23 @@ export function RecapCard() {
     <section className="ai-card recap" aria-busy={busy}>
       <header className="ai-head">
         <span className="ai-tag">
-            Your day
+            {t('yourDay')}
         </span>
         {(recap || err) && (
           <button className="link quiet" onClick={run} disabled={busy}>
-            {busy ? 'Writing…' : recap ? 'Rewrite' : 'Try again'}
+            {busy ? t('writing') : recap ? t('rewrite') : t('tryAgain')}
           </button>
         )}
       </header>
       {busy && !recap ? (
-        <Shimmer label="Reading your day…" />
+        <Shimmer label={t('readingDay')} />
       ) : recap ? (
         <div dir="auto">
           <p className="ai-headline">{recap.title}</p>
           <p className="ai-story">{recap.story}</p>
           {recap.next && (
             <p className="ai-tip">
-              <span className="ai-next">Tomorrow</span> {recap.next}
+              <span className="ai-next">{t('tomorrowLabel')}</span> {recap.next}
             </p>
           )}
         </div>
@@ -134,10 +135,10 @@ export function RecapCard() {
   )
 }
 
-function Shimmer({ label = 'Reading your plan…' }: { label?: string }) {
+function Shimmer({ label }: { label?: string }) {
   return (
     <div className="shimmer" role="status">
-      <span className="sr">{label}</span>
+      <span className="sr">{label ?? t('readingPlan')}</span>
       <i style={{ width: '70%' }} />
       <i style={{ width: '92%' }} />
       <i style={{ width: '56%' }} />
@@ -151,7 +152,7 @@ export function ShareButton() {
   const [open, setOpen] = useState(false)
   return (
     <>
-      <button className="chip" onClick={() => setOpen(true)}>Share image</button>
+      <button className="chip" onClick={() => setOpen(true)}>{t('shareImage')}</button>
       {open && <ShareSheet onClose={() => setOpen(false)} />}
     </>
   )
@@ -170,14 +171,14 @@ function ShareSheet({ onClose }: { onClose: () => void }) {
     renderDayCard({
       log,
       eventLine: eventLine(eventOf(state, log.eventId), now),
-      dateLine: new Date(now).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }),
+      dateLine: fmtDate(now, { weekday: 'long', month: 'long', day: 'numeric' }),
     })
       .then((b) => {
         if (!alive) return
         setBlob(b)
         setUrl(URL.createObjectURL(b))
       })
-      .catch(() => setNote('Couldn’t draw the image.'))
+      .catch(() => setNote(t('drawFailed')))
     return () => {
       alive = false
     }
@@ -198,7 +199,7 @@ function ShareSheet({ onClose }: { onClose: () => void }) {
   const share = async () => {
     if (!f) return
     try {
-      await navigator.share({ files: [f], title: 'My day on Planet' })
+      await navigator.share({ files: [f], title: t('shareTitle') })
     } catch {
       /* cancelled */
     }
@@ -207,27 +208,27 @@ function ShareSheet({ onClose }: { onClose: () => void }) {
     if (!blob) return
     try {
       await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })])
-      setNote('Copied.')
+      setNote(t('copied'))
     } catch {
-      setNote('Copy isn’t allowed here — use Download.')
+      setNote(t('copyBlocked'))
     }
   }
 
   return createPortal(
     <div className="sheet-backdrop" onClick={onClose}>
-      <div className="share" role="dialog" aria-modal="true" aria-label="Share your day" onClick={(e) => e.stopPropagation()}>
-        <div className="share-img">{url ? <img src={url} alt="Your day as an image" /> : <div className="share-wait">Drawing…</div>}</div>
+      <div className="share" role="dialog" aria-modal="true" aria-label={t('shareDialog')} onClick={(e) => e.stopPropagation()}>
+        <div className="share-img">{url ? <img src={url} alt={t('yourDayImage')} /> : <div className="share-wait">{t('drawing')}</div>}</div>
         <div className="share-actions">
           {canShare && (
-            <button className="chip solid" onClick={share}>Share</button>
+            <button className="chip solid" onClick={share}>{t('share')}</button>
           )}
           {url && (
-            <a className={`chip ${canShare ? '' : 'solid'}`} href={url} download={file}>Download</a>
+            <a className={`chip ${canShare ? '' : 'solid'}`} href={url} download={file}>{t('download')}</a>
           )}
           {canCopy && (
-            <button className="chip" onClick={copy}>Copy</button>
+            <button className="chip" onClick={copy}>{t('copy')}</button>
           )}
-          <button className="link quiet" onClick={onClose}>Close</button>
+          <button className="link quiet" onClick={onClose}>{t('close')}</button>
         </div>
         {note && <p className="share-note">{note}</p>}
       </div>

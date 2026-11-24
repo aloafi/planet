@@ -18,6 +18,7 @@ import { go } from '../lib/route'
 import { planetFx } from '../lib/fx'
 import { EventField } from './Events'
 import { ForecastCard } from './Insights'
+import { fmtDate, nBreaks, nTasks, t as tx } from '../lib/i18n'
 import type { Block, BlockType } from '../lib/types'
 
 export function Plan() {
@@ -55,24 +56,24 @@ export function Plan() {
   return (
     <main className="page plan">
       <header className="page-head">
-        <span className="eyebrow">Timeline</span>
-        <h1 className="page-title">Plan</h1>
+        <span className="eyebrow">{tx('timeline')}</span>
+        <h1 className="page-title">{tx('plan')}</h1>
         <div className="plan-event">
           <EventField />
         </div>
         <p className="page-sub plan-sub">
           <label className="start-field">
-            Starts
+            {tx('starts')}
             <input
               type="time"
               value={plan.startTime}
               onChange={(e) => e.target.value && act({ type: 'SET_START_TIME', value: e.target.value })}
-              aria-label="Day start time"
+              aria-label={tx('dayStart')}
             />
           </label>
           {plan.blocks.length > 0 && (
             <span>
-              {tasks} {tasks === 1 ? 'task' : 'tasks'} · {breaks} {breaks === 1 ? 'break' : 'breaks'} · {human(totalMin * 60_000)} · ends {hm(start + totalMin)}
+              {nTasks(tasks)} · {nBreaks(breaks)} · {human(totalMin * 60_000)} · {tx('ends', { t: hm(start + totalMin) })}
             </span>
           )}
         </p>
@@ -80,7 +81,7 @@ export function Plan() {
 
       {plan.blocks.length === 0 ? (
         <div className="plan-empty">
-          <p>Your timeline is empty. Add the first task below, or load a template.</p>
+          <p>{tx('planEmpty')}</p>
         </div>
       ) : (
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd} modifiers={[restrictToVertical]}>
@@ -123,13 +124,13 @@ export function Plan() {
             }
             go('now')
           }}>
-            {run.phase === 'idle' ? (Object.keys(run.records).length ? 'Continue' : 'Start day') : 'View summary'}
+            {run.phase === 'idle' ? (Object.keys(run.records).length ? tx('continue') : tx('startDay')) : tx('viewSummary')}
           </button>
         </div>
       )}
       {run.phase === 'active' && (
         <div className="page-actions">
-          <button className="primary compact" onClick={() => go('now')}>Back to current</button>
+          <button className="primary compact" onClick={() => go('now')}>{tx('backToCurrent')}</button>
         </div>
       )}
 
@@ -143,7 +144,7 @@ function newBlock(type: BlockType, name = '', duration?: number): Block {
   return {
     id: uid(),
     type,
-    name: type === 'break' && !name ? 'Break' : name,
+    name: type === 'break' && !name ? tx('break') : name,
     description: '',
     duration: duration ?? (type === 'break' ? 10 : 45),
     timed: true,
@@ -173,7 +174,7 @@ function Row(props: {
       className={`pl-row pl-${b.type} st-${status} ${editing ? 'is-editing' : ''} ${isDragging ? 'is-dragging' : ''}`}
     >
       <div className="pl-line">
-        <button ref={setActivatorNodeRef} className="handle" aria-label={`Reorder ${b.name || b.type}`} {...attributes} {...listeners}>
+        <button ref={setActivatorNodeRef} className="handle" aria-label={tx('reorder', { name: b.name || b.type })} {...attributes} {...listeners}>
           <svg viewBox="0 0 10 16" width="10" height="16" aria-hidden>
             {[3, 8, 13].map((y) => (
               <g key={y}>
@@ -183,21 +184,21 @@ function Row(props: {
             ))}
           </svg>
         </button>
-        <span className="pl-time">{hm(start)}</span>
+        <span className="pl-time" dir="ltr">{hm(start)}</span>
         <button className="pl-name" onClick={props.onToggle} aria-expanded={editing}>
-          <span className="pl-title">{b.type === 'break' ? b.name || 'Break' : b.name || <em>Untitled task</em>}</span>
+          <span className="pl-title">{b.type === 'break' ? b.name || tx('break') : b.name || <em>{tx('untitled')}</em>}</span>
           {b.description && !editing && <span className="pl-desc">{b.description}</span>}
         </button>
-        <span className="pl-dur">{b.type === 'task' && !b.timed ? 'Untimed' : minutesLabel(b.duration)}</span>
+        <span className="pl-dur">{b.type === 'task' && !b.timed ? tx('untimed') : minutesLabel(b.duration)}</span>
         <span className={`pl-status st-${status}`} title={status === 'pending' ? '' : status}>
-          {status === 'completed' ? 'Done' : status === 'skipped' ? 'Skipped' : status === 'current' ? 'Now' : ''}
+          {status === 'completed' ? tx('done') : status === 'skipped' ? tx('skipped') : status === 'current' ? tx('nowState') : ''}
         </span>
       </div>
       {editing && <Editor block={b} autoFocus={props.autoFocus} onClose={props.onClose} onInsert={props.onInsert} />}
       {!editing && (
         <div className="pl-insert">
-          <button onClick={() => props.onInsert('task')}>+ Task</button>
-          <button onClick={() => props.onInsert('break')}>+ Break</button>
+          <button onClick={() => props.onInsert('task')}>{tx('addTaskHere')}</button>
+          <button onClick={() => props.onInsert('break')}>{tx('addBreakHere')}</button>
         </div>
       )}
     </li>
@@ -234,63 +235,63 @@ function Editor({ block: b, autoFocus, onClose, onInsert }: { block: Block; auto
         <Segment
           value={b.type}
           options={[
-            ['task', 'Task'],
-            ['break', 'Break'],
+            ['task', tx('task')],
+            ['break', tx('break')],
           ]}
-          onChange={(v) => update({ type: v as BlockType, ...(v === 'break' && !b.name ? { name: 'Break' } : {}), ...(v === 'task' && b.name === 'Break' ? { name: '' } : {}) })}
-          label="Block type"
+          onChange={(v) => update({ type: v as BlockType, ...(v === 'break' && !b.name ? { name: tx('break') } : {}), ...(v === 'task' && (b.name === 'Break' || b.name === 'استراحة') ? { name: '' } : {}) })}
+          label={tx('blockType')}
         />
         {b.type === 'task' && (
           <Segment
             value={b.timed ? 'timed' : 'untimed'}
             options={[
-              ['timed', 'Timed'],
-              ['untimed', 'Untimed'],
+              ['timed', tx('timed')],
+              ['untimed', tx('untimed')],
             ]}
             onChange={(v) => update({ timed: v === 'timed' })}
-            label="Timing"
+            label={tx('timing')}
           />
         )}
       </div>
 
       <label className="field">
-        <span>Name</span>
-        <input ref={nameRef} value={b.name} placeholder={b.type === 'break' ? 'Break' : 'What will you do?'} onChange={(e) => update({ name: e.target.value })} maxLength={80} />
+        <span>{tx('name')}</span>
+        <input ref={nameRef} value={b.name} placeholder={b.type === 'break' ? tx('break') : tx('whatWillYouDo')} dir="auto" onChange={(e) => update({ name: e.target.value })} maxLength={80} />
       </label>
 
       <label className="field">
-        <span>Description <i>optional</i></span>
-        <textarea rows={2} value={b.description} placeholder="A short note for yourself" onChange={(e) => update({ description: e.target.value })} maxLength={200} />
+        <span>{tx('description')} <i>{tx('optional')}</i></span>
+        <textarea rows={2} value={b.description} placeholder={tx('shortNote')} dir="auto" onChange={(e) => update({ description: e.target.value })} maxLength={200} />
       </label>
 
       <div className="field">
-        <span>{b.type === 'task' && !b.timed ? 'Estimate (planning only)' : 'Duration'}</span>
+        <span>{b.type === 'task' && !b.timed ? tx('estimate') : tx('duration')}</span>
         <div className="stepper">
-          <button onClick={() => bump(-5)} aria-label="5 minutes less">−</button>
+          <button onClick={() => bump(-5)} aria-label={tx('lessMin')}>−</button>
           <input
             inputMode="numeric"
             value={dur}
             onChange={(e) => setDur(e.target.value.replace(/[^0-9]/g, ''))}
             onBlur={(e) => commitDur(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && commitDur((e.target as HTMLInputElement).value)}
-            aria-label="Duration in minutes"
+            aria-label={tx('durationMin')}
           />
-          <span className="unit">min</span>
-          <button onClick={() => bump(5)} aria-label="5 minutes more">+</button>
+          <span className="unit">{tx('min')}</span>
+          <button onClick={() => bump(5)} aria-label={tx('moreMin')}>+</button>
         </div>
       </div>
 
       <div className="editor-actions">
-        <button className="link" onClick={() => onInsert('break')}>Insert break after</button>
+        <button className="link" onClick={() => onInsert('break')}>{tx('insertBreakAfter')}</button>
         {confirmDel ? (
           <span className="confirm">
-            <button className="link danger" onClick={() => act({ type: 'DELETE_BLOCK', id: b.id })}>Delete</button>
-            <button className="link quiet" onClick={() => setConfirmDel(false)}>Keep</button>
+            <button className="link danger" onClick={() => act({ type: 'DELETE_BLOCK', id: b.id })}>{tx('delete')}</button>
+            <button className="link quiet" onClick={() => setConfirmDel(false)}>{tx('keep')}</button>
           </span>
         ) : (
-          <button className="link danger" onClick={() => setConfirmDel(true)}>Delete</button>
+          <button className="link danger" onClick={() => setConfirmDel(true)}>{tx('delete')}</button>
         )}
-        <button className="chip solid" onClick={onClose}>Done</button>
+        <button className="chip solid" onClick={onClose}>{tx('done')}</button>
       </div>
     </div>
   )
@@ -334,18 +335,19 @@ function QuickAdd() {
         ref={inputRef}
         className="qa-name"
         value={name}
-        placeholder="Add a task…"
+        placeholder={tx('addATask')}
+        dir="auto"
         onChange={(e) => setName(e.target.value)}
         onKeyDown={(e) => e.key === 'Enter' && add()}
         maxLength={80}
-        aria-label="New task name"
+        aria-label={tx('newTaskName')}
       />
       <label className="qa-dur">
-        <input inputMode="numeric" value={dur} onChange={(e) => setDur(e.target.value.replace(/[^0-9]/g, ''))} onKeyDown={(e) => e.key === 'Enter' && add()} aria-label="New task duration in minutes" />
-        <span>min</span>
+        <input inputMode="numeric" value={dur} onChange={(e) => setDur(e.target.value.replace(/[^0-9]/g, ''))} onKeyDown={(e) => e.key === 'Enter' && add()} aria-label={tx('newTaskDur')} />
+        <span>{tx('min')}</span>
       </label>
-      <button className="chip solid" onClick={add}>Add task</button>
-      <button className="chip" onClick={() => act({ type: 'ADD_BLOCK', block: newBlock('break') })}>Add break</button>
+      <button className="chip solid" onClick={add}>{tx('addTask')}</button>
+      <button className="chip" onClick={() => act({ type: 'ADD_BLOCK', block: newBlock('break') })}>{tx('addBreak')}</button>
     </div>
   )
 }
@@ -376,14 +378,14 @@ function Templates() {
 
   return (
     <section className="templates">
-      <h2 className="section-title">Templates</h2>
-      <p className="section-note">Save this timeline to reuse it on other days.</p>
+      <h2 className="section-title">{tx('templates')}</h2>
+      <p className="section-note">{tx('templatesNote')}</p>
       <div className="tpl-save">
-        <input value={name} placeholder={defaultName()} onChange={(e) => setName(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && save()} maxLength={40} aria-label="Template name" />
+        <input value={name} placeholder={defaultName()} onChange={(e) => setName(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && save()} maxLength={40} aria-label={tx('templateName')} dir="auto" />
         <button className="chip" onClick={save} disabled={!state.plan.blocks.length}>
-          {exists ? 'Update template' : 'Save as template'}
+          {exists ? tx('updateTemplate') : tx('saveTemplate')}
         </button>
-        {saved && <span className="saved">Saved “{saved}”</span>}
+        {saved && <span className="saved">{tx('savedX', { name: saved })}</span>}
       </div>
 
       {state.templates.length > 0 && (
@@ -396,24 +398,24 @@ function Templates() {
                 <div className="tpl-info">
                   <span className="tpl-name">{t.name}</span>
                   <span className="tpl-meta">
-                    {n} {n === 1 ? 'task' : 'tasks'} · {human(mins * 60_000)} · from {t.startTime}
+                    {nTasks(n)} · {human(mins * 60_000)} · {tx('fromTime', { t: t.startTime })}
                   </span>
                 </div>
                 {confirm === t.id ? (
                   <span className="confirm">
-                    {inProgress ? 'Replaces today’s plan and progress.' : 'Replaces the current plan.'}
-                    <button className="link" onClick={() => load(t.id)}>Load</button>
-                    <button className="link quiet" onClick={() => setConfirm(null)}>Cancel</button>
+                    {inProgress ? tx('replacesProgress') : tx('replacesPlan')}
+                    <button className="link" onClick={() => load(t.id)}>{tx('load')}</button>
+                    <button className="link quiet" onClick={() => setConfirm(null)}>{tx('cancel')}</button>
                   </span>
                 ) : confirm === `del-${t.id}` ? (
                   <span className="confirm">
-                    <button className="link danger" onClick={() => act({ type: 'DELETE_TEMPLATE', id: t.id })}>Delete template</button>
-                    <button className="link quiet" onClick={() => setConfirm(null)}>Cancel</button>
+                    <button className="link danger" onClick={() => act({ type: 'DELETE_TEMPLATE', id: t.id })}>{tx('deleteTemplate')}</button>
+                    <button className="link quiet" onClick={() => setConfirm(null)}>{tx('cancel')}</button>
                   </span>
                 ) : (
                   <span className="tpl-actions">
-                    <button className="link" onClick={() => (state.plan.blocks.length ? setConfirm(t.id) : load(t.id))}>Load</button>
-                    <button className="link quiet" onClick={() => setConfirm(`del-${t.id}`)}>Delete</button>
+                    <button className="link" onClick={() => (state.plan.blocks.length ? setConfirm(t.id) : load(t.id))}>{tx('load')}</button>
+                    <button className="link quiet" onClick={() => setConfirm(`del-${t.id}`)}>{tx('delete')}</button>
                   </span>
                 )}
               </li>
@@ -426,7 +428,7 @@ function Templates() {
 }
 
 function defaultName() {
-  return new Date().toLocaleDateString(undefined, { weekday: 'long' })
+  return fmtDate(Date.now(), { weekday: 'long' })
 }
 
 function Danger() {
@@ -438,19 +440,19 @@ function Danger() {
     <div className="danger-zone">
       {c ? (
         <span className="confirm">
-          {c === 'clear' ? 'Remove every block from the timeline?' : 'Clear today’s progress and start over?'}
+          {c === 'clear' ? tx('clearQ') : tx('resetQ')}
           <button className="link danger" onClick={() => {
             act(c === 'clear' ? { type: 'SET_BLOCKS', blocks: [] } : { type: 'RESET_DAY' })
             setC(null)
           }}>
-            {c === 'clear' ? 'Clear timeline' : 'Reset progress'}
+            {c === 'clear' ? tx('clearTimeline') : tx('resetBtn')}
           </button>
-          <button className="link quiet" onClick={() => setC(null)}>Cancel</button>
+          <button className="link quiet" onClick={() => setC(null)}>{tx('cancel')}</button>
         </span>
       ) : (
         <>
-          {hasProgress && <button className="link quiet" onClick={() => setC('reset')}>Reset today’s progress</button>}
-          <button className="link quiet" onClick={() => setC('clear')}>Clear timeline</button>
+          {hasProgress && <button className="link quiet" onClick={() => setC('reset')}>{tx('resetProgress')}</button>}
+          <button className="link quiet" onClick={() => setC('clear')}>{tx('clearTimeline')}</button>
         </>
       )}
     </div>

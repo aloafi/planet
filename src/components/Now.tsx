@@ -8,6 +8,7 @@ import { Summary } from './Summary'
 import { planetFx, type FxTint } from '../lib/fx'
 import { eventOf } from '../lib/engine'
 import { EventTag } from './Events'
+import { nMin, nTasks, t as tx } from '../lib/i18n'
 
 const tintOf = (b: Block | null | undefined): FxTint => (b?.type === 'break' ? 'break' : 'task')
 const mainButton = () => document.querySelector('.primary')
@@ -29,7 +30,7 @@ function Progress() {
   const { state } = useStore()
   const p = progressOf(state)
   return (
-    <div className="progress" role="progressbar" aria-valuemin={0} aria-valuemax={p.total} aria-valuenow={p.handled} aria-label="Daily progress">
+    <div className="progress" role="progressbar" aria-valuemin={0} aria-valuemax={p.total} aria-valuenow={p.handled} aria-label={tx('day')}>
       <div className="progress-fill" style={{ transform: `scaleX(${p.ratio})` }} />
     </div>
   )
@@ -42,9 +43,9 @@ function Bank() {
   if (!counted || Math.abs(ms) < 1000) return null
   const ahead = ms > 0
   return (
-    <span className={`bank ${ahead ? 'is-ahead' : 'is-behind'}`} title={ahead ? 'Time saved by finishing early' : 'Time over the plan'}>
+    <span className={`bank ${ahead ? 'is-ahead' : 'is-behind'}`} title={ahead ? tx('savedTitle') : tx('behindTitle')}>
       <span className="bank-value">{signed(ms)}</span>
-      <span className="bank-label">{ahead ? 'saved' : 'behind'}</span>
+      <span className="bank-label">{ahead ? tx('saved') : tx('behind')}</span>
     </span>
   )
 }
@@ -54,7 +55,7 @@ function MetaRight() {
     <span className="meta-right">
       <Bank />
       <button className="link quiet" onClick={() => go('day')}>
-        Overview
+        {tx('overview')}
       </button>
     </span>
   )
@@ -98,9 +99,9 @@ function TaskMode({ b }: { b: Block }) {
 
   const finish = () => {
     planetFx('orbit', mainButton(), tintOf(nextPending(plan, run, b.id)))
-    step('FINISH', `${b.name || 'Task'} completed`)
+    step('FINISH', tx('completedToast', { name: b.name || tx('task') }))
   }
-  const skip = () => step('SKIP', `${b.name || 'Task'} skipped`)
+  const skip = () => step('SKIP', tx('skippedToast', { name: b.name || tx('task') }))
   const toggle = () => {
     if (ready) planetFx('launch', mainButton())
     act({ type: ready ? 'START' : paused ? 'RESUME' : 'PAUSE' })
@@ -118,29 +119,27 @@ function TaskMode({ b }: { b: Block }) {
   }, [b.id])
 
   let timeLabel: string
-  if (!b.timed) timeLabel = paused ? 'Paused' : ready ? 'Untimed' : 'Elapsed'
-  else if (paused) timeLabel = 'Paused'
-  else if (ready) timeLabel = 'Ready'
-  else if (expired) timeLabel = 'Over time'
-  else timeLabel = `of ${human(totalMsOf(b, t))}`
+  if (!b.timed) timeLabel = paused ? tx('paused') : ready ? tx('untimed') : tx('elapsed')
+  else if (paused) timeLabel = tx('paused')
+  else if (ready) timeLabel = tx('ready')
+  else if (expired) timeLabel = tx('overTime')
+  else timeLabel = tx('ofTotal', { t: human(totalMsOf(b, t)) })
 
   return (
     <main className="stage mode-task">
       <div className="stage-top">
         <div className="meta">
-          <span>
-            Task <b>{n}</b> of {total}
-          </span>
+          <span>{tx('taskOf', { n: String(n), total: String(total) })}</span>
           <MetaRight />
         </div>
         <Progress />
       </div>
 
       <section className="focus" key={b.id}>
-        <h1 className={`task-name ${nameSize(b.name)}`}>{b.name || 'Untitled task'}</h1>
+        <h1 className={`task-name ${nameSize(b.name)}`}>{b.name || tx('untitled')}</h1>
         {b.description && <p className="task-desc">{b.description}</p>}
         <div className={`timer ${paused ? 'is-paused' : ''} ${expired && b.timed ? 'is-over' : ''}`}>
-          <span className="timer-digits" aria-live="off">
+          <span className="timer-digits" aria-live="off" dir="ltr">
             {b.timed ? clock(rem!) : stopwatch(elapsed)}
           </span>
           <span className="timer-label">{timeLabel}</span>
@@ -150,23 +149,23 @@ function TaskMode({ b }: { b: Block }) {
       <section className="controls">
         {askOpen && (
           <div className="timeup" role="alert">
-            <span className="timeup-title">Time’s up.</span>
+            <span className="timeup-title">{tx('timesUp')}</span>
             <div className="timeup-row">
-              <button className="chip" onClick={() => extend(5)}>+5 min</button>
-              <button className="chip" onClick={() => extend(10)}>+10 min</button>
-              <button className="chip" onClick={skip}>Skip</button>
-              <button className="chip ghost" onClick={() => act({ type: 'KEEP_GOING' })}>Keep going</button>
+              <button className="chip" onClick={() => extend(5)}>+{nMin(5)}</button>
+              <button className="chip" onClick={() => extend(10)}>+{nMin(10)}</button>
+              <button className="chip" onClick={skip}>{tx('skip')}</button>
+              <button className="chip ghost" onClick={() => act({ type: 'KEEP_GOING' })}>{tx('keepGoing')}</button>
             </div>
           </div>
         )}
 
         {ready ? (
           <button className="primary" onClick={toggle} autoFocus>
-            Start
+            {tx('start')}
           </button>
         ) : (
           <button className="primary" onClick={finish}>
-            Finish
+            {tx('finish')}
           </button>
         )}
 
@@ -176,30 +175,30 @@ function TaskMode({ b }: { b: Block }) {
           <div className="secondary">
             {[5, 10, 15].map((m) => (
               <button key={m} className="link" onClick={() => extend(m)}>
-                +{m} min
+                +{nMin(m)}
               </button>
             ))}
             <button className="link quiet" onClick={() => setExtendOpen(false)}>
-              Cancel
+              {tx('cancel')}
             </button>
           </div>
         ) : (
           <div className="secondary">
             {ready ? (
-              <button className="link" onClick={finish}>Finish</button>
+              <button className="link" onClick={finish}>{tx('finish')}</button>
             ) : (
-              <button className="link" onClick={toggle}>{paused ? 'Resume' : 'Pause'}</button>
+              <button className="link" onClick={toggle}>{paused ? tx('resume') : tx('pause')}</button>
             )}
             {b.timed && (
               <button className="link" onClick={() => setExtendOpen(true)}>
-                Extend
+                {tx('extend')}
               </button>
             )}
             <button className="link" onClick={skip}>
-              Skip
+              {tx('skip')}
             </button>
             <button className="link quiet" onClick={() => setEnding(true)}>
-              End session
+              {tx('endSession')}
             </button>
           </div>
         )}
@@ -218,15 +217,16 @@ function EndConfirm({ onCancel }: { onCancel: () => void }) {
     return () => window.removeEventListener('keydown', on)
   }, [onCancel])
   return (
-    <div className="secondary end-confirm" role="group" aria-label="End session">
+    <div className="secondary end-confirm" role="group" aria-label={tx('endSession')}>
       <span className="end-q">
-        End this session?{left > 0 ? ` ${left} ${left === 1 ? 'task stays' : 'tasks stay'} unfinished.` : ''}
+        {tx('endSessionQ')}
+        {left > 0 ? ' ' + tx('staysUnfinished', { tasks: nTasks(left) }) : ''}
       </span>
       <button className="link danger" onClick={() => act({ type: 'END_DAY' })} autoFocus>
-        End session
+        {tx('endSession')}
       </button>
       <button className="link quiet" onClick={onCancel}>
-        Cancel
+        {tx('cancel')}
       </button>
     </div>
   )
@@ -258,7 +258,7 @@ function BreakMode({ b }: { b: Block }) {
   const toggle = () => act({ type: ready ? 'START' : paused ? 'RESUME' : 'PAUSE' })
   const end = () => {
     planetFx('launch', mainButton(), tintOf(next))
-    step('FINISH', 'Break ended')
+    step('FINISH', tx('breakEnded'))
   }
 
   useShortcuts({ enter: end, f: end, space: toggle, p: toggle, e: () => act({ type: 'EXTEND', minutes: 5 }) })
@@ -269,18 +269,18 @@ function BreakMode({ b }: { b: Block }) {
     <main className="stage mode-break">
       <div className="stage-top">
         <div className="meta">
-          <span>{b.name && b.name.toLowerCase() !== 'break' ? b.name : 'Break'}</span>
+          <span>{b.name && !['break', 'استراحة'].includes(b.name.toLowerCase()) ? b.name : tx('break')}</span>
           <MetaRight />
         </div>
         <Progress />
       </div>
 
       <section className="focus" key={b.id}>
-        <div className="break-label">{waiting ? 'Break’s over' : 'Break'}</div>
+        <div className="break-label">{waiting ? tx('breaksOver') : tx('break')}</div>
         <div className={`timer timer-break ${paused ? 'is-paused' : ''}`}>
-          <span className="timer-digits">{clock(Math.max(0, rem))}</span>
+          <span className="timer-digits" dir="ltr">{clock(Math.max(0, rem))}</span>
           <span className="timer-label">
-            {paused ? 'Paused' : ready ? 'Ready' : waiting ? 'Ready when you are' : `${human(Math.max(0, rem))} left of ${human(total)}`}
+            {paused ? tx('paused') : ready ? tx('ready') : waiting ? tx('readyWhenYouAre') : tx('leftOf', { left: human(Math.max(0, rem)), total: human(total) })}
           </span>
         </div>
         <div className="drain" aria-hidden>
@@ -288,39 +288,39 @@ function BreakMode({ b }: { b: Block }) {
         </div>
         {b.description && <p className="task-desc">{b.description}</p>}
         <div className="next">
-          <span className="next-label">Next task</span>
+          <span className="next-label">{tx('nextTask')}</span>
           {next ? (
             <>
-              <span className="next-name">{next.name || (next.type === 'break' ? 'Break' : 'Untitled task')}</span>
+              <span className="next-name">{next.name || (next.type === 'break' ? tx('break') : tx('untitled'))}</span>
               <span className="next-meta">
-                {next.type === 'task' ? `Task ${nextN} of ${tasksOf(plan).length} · ` : ''}
-                {next.type === 'task' && !next.timed ? 'Untimed' : minutesLabel(next.duration)}
+                {next.type === 'task' ? tx('taskOf', { n: String(nextN), total: String(tasksOf(plan).length) }) + ' · ' : ''}
+                {next.type === 'task' && !next.timed ? tx('untimed') : minutesLabel(next.duration)}
               </span>
             </>
           ) : (
-            <span className="next-name">Nothing — this is the last block</span>
+            <span className="next-name">{tx('lastBlock')}</span>
           )}
         </div>
       </section>
 
       <section className="controls">
         <button className="primary" onClick={end} autoFocus>
-          {waiting && next ? `Start ${next.name || 'next'}` : 'End break'}
+          {waiting && next ? tx('startX', { name: next.name || tx('nextTask') }) : tx('endBreak')}
         </button>
         {ending ? (
           <EndConfirm onCancel={() => setEnding(false)} />
         ) : (
         <div className="secondary">
           {ready ? (
-            <button className="link" onClick={toggle}>Start break</button>
+            <button className="link" onClick={toggle}>{tx('startBreak')}</button>
           ) : !waiting ? (
-            <button className="link" onClick={toggle}>{paused ? 'Resume' : 'Pause'}</button>
+            <button className="link" onClick={toggle}>{paused ? tx('resume') : tx('pause')}</button>
           ) : null}
           <button className="link" onClick={() => act({ type: 'EXTEND', minutes: 5 })}>
-            +5 min
+            +{nMin(5)}
           </button>
           <button className="link quiet" onClick={() => setEnding(true)}>
-            End session
+            {tx('endSession')}
           </button>
         </div>
         )}
@@ -355,10 +355,10 @@ function Ready() {
       <div className="stage-top">
         <div className="meta">
           <span>
-            Today · {tasks} {tasks === 1 ? 'task' : 'tasks'} · {human(totalMin * 60_000)} · {hm(start)}–{hm(start + totalMin)}
+            {tx('today')} · {nTasks(tasks)} · {human(totalMin * 60_000)} · <bdi dir="ltr">{hm(start)}–{hm(start + totalMin)}</bdi>
           </span>
           <button className="link quiet" onClick={() => go('plan')}>
-            Edit plan
+            {tx('editPlan')}
           </button>
         </div>
         <Progress />
@@ -366,24 +366,24 @@ function Ready() {
 
       <section className="focus" key={first.id}>
         <span className="eyebrow">
-          {continuing ? 'Up next' : 'First up'}
+          {continuing ? tx('upNext') : tx('firstUp')}
           <EventTag ev={eventOf(state, plan.eventId)} now={Date.now()} />
         </span>
-        <h1 className={`task-name ${nameSize(first.name)}`}>{first.name || (first.type === 'break' ? 'Break' : 'Untitled task')}</h1>
+        <h1 className={`task-name ${nameSize(first.name)}`}>{first.name || (first.type === 'break' ? tx('break') : tx('untitled'))}</h1>
         {first.description && <p className="task-desc">{first.description}</p>}
         <div className="timer">
-          <span className="timer-digits dim">{first.type === 'task' && !first.timed ? '00:00' : clock(first.duration * 60_000)}</span>
-          <span className="timer-label">{n ? `Task ${n} of ${tasks}` : 'Break'}</span>
+          <span className="timer-digits dim" dir="ltr">{first.type === 'task' && !first.timed ? '00:00' : clock(first.duration * 60_000)}</span>
+          <span className="timer-label">{n ? tx('taskOf', { n: String(n), total: String(tasks) }) : tx('break')}</span>
         </div>
       </section>
 
       <section className="controls">
         <button className="primary" onClick={startDay} autoFocus>
-          {continuing ? 'Continue' : 'Start day'}
+          {continuing ? tx('continue') : tx('startDay')}
         </button>
         <div className="secondary">
           <button className="link" onClick={() => go('day')}>
-            Overview
+            {tx('overview')}
           </button>
         </div>
       </section>
@@ -397,20 +397,20 @@ function Empty() {
     <main className="stage mode-task">
       <div className="stage-top" />
       <section className="focus">
-        <span className="eyebrow">Nothing planned</span>
-        <h1 className="task-name len-m">Plan the day once. Then just execute.</h1>
-        <p className="task-desc">Add tasks and breaks in order. Planet shows you one at a time.</p>
+        <span className="eyebrow">{tx('nothingPlanned')}</span>
+        <h1 className="task-name len-m">{tx('emptyTitle')}</h1>
+        <p className="task-desc">{tx('emptyText')}</p>
       </section>
       <section className="controls">
         <button className="primary" onClick={(e) => {
           planetFx('launch', e.currentTarget)
           go('plan')
         }} autoFocus>
-          Plan your day
+          {tx('planYourDay')}
         </button>
         <div className="secondary">
           <button className="link" onClick={() => act({ type: 'SET_BLOCKS', blocks: sampleBlocks(), startTime: '08:00' })}>
-            Use a sample day
+            {tx('sampleDay')}
           </button>
         </div>
       </section>

@@ -1,3 +1,4 @@
+import { isAr, t } from './i18n'
 import type { AppState, Block, BlockRecord, DayLog, Forecast, Plan, PlanEvent, Recap, Run, Settings, Timer } from './types'
 
 export const MIN = 60_000
@@ -42,16 +43,25 @@ export const defaultSettings: Settings = {
   theme: 'dark',
   motion: true,
   ai: true,
-  aiLang: 'auto',
+  lang: 'en',
 }
 
-export const sampleBlocks = (): Block[] => [
+export const sampleBlocks = (): Block[] =>
+  isAr()
+    ? [
+        { id: uid(), type: 'task', name: 'الرياضيات', description: 'الفصل الرابع — تمارين المجموعة ب', duration: 45, timed: true },
+        { id: uid(), type: 'break', name: 'استراحة', description: '', duration: 10, timed: true },
+        { id: uid(), type: 'task', name: 'الفيزياء', description: 'مراجعة معادلات الحركة', duration: 50, timed: true },
+        { id: uid(), type: 'break', name: 'استراحة', description: '', duration: 15, timed: true },
+        { id: uid(), type: 'task', name: 'اللغة الإنجليزية', description: 'مسودة المقال، أول فقرتين', duration: 40, timed: true },
+      ]
+    : [
   { id: uid(), type: 'task', name: 'Mathematics', description: 'Chapter 4 — practice set B', duration: 45, timed: true },
   { id: uid(), type: 'break', name: 'Break', description: '', duration: 10, timed: true },
   { id: uid(), type: 'task', name: 'Physics', description: 'Review motion equations', duration: 50, timed: true },
   { id: uid(), type: 'break', name: 'Break', description: '', duration: 15, timed: true },
   { id: uid(), type: 'task', name: 'English', description: 'Essay draft, first two paragraphs', duration: 40, timed: true },
-]
+      ]
 
 export const initialState = (now: number): AppState => ({
   version: 1,
@@ -124,7 +134,8 @@ export const scheduleOf = (plan: Plan) => {
 /**
  * Time bank: how far ahead (+) or behind (−) the plan you are.
  * Each completed countdown block adds (planned − actual); a block running
- * over its planned time eats into the bank live. Skipped and untimed blocks don't count.
+ * over its planned time eats into the bank live. Skipped and untimed blocks don't count,
+ * nor do blocks marked done in under a minute (finished off the clock).
  */
 export const bankOf = (s: AppState, now: number) => {
   let ms = 0
@@ -132,7 +143,8 @@ export const bankOf = (s: AppState, now: number) => {
   for (const b of s.plan.blocks) {
     if (!isCountdown(b)) continue
     const r = s.run.records[b.id]
-    if (r?.status === 'completed') {
+    // a block marked done within its first minute was done off the clock — it says nothing about speed
+    if (r?.status === 'completed' && r.spentMs >= MIN) {
       ms += b.duration * MIN - r.spentMs
       counted++
     }
@@ -204,7 +216,7 @@ export function dayLogOf(s: AppState, now: number): DayLog {
     blocks: s.plan.blocks.map((b) => {
       let spent = s.run.records[b.id]?.spentMs ?? 0
       if (b.id === s.run.currentId && s.run.phase === 'active') spent += elapsedOf(s.run.timer, now)
-      return { name: b.name || (b.type === 'break' ? 'Break' : 'Untitled task'), type: b.type, plannedMin: b.duration, spentMs: spent, status: statusOf(s.run, b.id) }
+      return { name: b.name || (b.type === 'break' ? t('break') : t('untitled')), type: b.type, plannedMin: b.duration, spentMs: spent, status: statusOf(s.run, b.id) }
     }),
     focusedMs: sum.focusedMs,
     breakMs: sum.breakMs,
@@ -529,7 +541,11 @@ export function revive(raw: unknown, now: number): AppState {
     version: 1,
     plan: { startTime: typeof r.plan?.startTime === 'string' ? r.plan.startTime : '08:00', blocks },
     templates: Array.isArray(r.templates) ? r.templates : [],
-    settings: { ...defaultSettings, ...(r.settings ?? {}) },
+    settings: {
+      ...defaultSettings,
+      lang: typeof navigator !== 'undefined' && navigator.language?.toLowerCase().startsWith('ar') ? 'ar' : 'en',
+      ...(r.settings ?? {}),
+    },
     run: r.run && typeof r.run === 'object' ? { ...freshRun(now), ...r.run, timer: { ...freshTimer(null, false), ...r.run.timer } } : freshRun(now),
     events: Array.isArray(r.events) ? r.events.filter((e) => e && typeof e.id === 'string' && typeof e.date === 'string') : [],
     history: Array.isArray(r.history) ? r.history : [],

@@ -5,6 +5,7 @@ import { hm, minutesLabel, signed } from '../lib/format'
 import { go } from '../lib/route'
 import { planetFx } from '../lib/fx'
 import { EventTag } from './Events'
+import { t } from '../lib/i18n'
 import { eventOf } from '../lib/engine'
 
 type Visual = 'completed' | 'current' | 'upcoming' | 'skipped'
@@ -21,11 +22,11 @@ export function Day() {
     return (
       <main className="page">
         <header className="page-head">
-          <span className="eyebrow">Overview</span>
-          <h1 className="page-title">Nothing planned yet.</h1>
+          <span className="eyebrow">{t('overview')}</span>
+          <h1 className="page-title">{t('nothingYet')}</h1>
         </header>
         <div className="page-actions">
-          <button className="primary compact" onClick={() => go('plan')}>Plan your day</button>
+          <button className="primary compact" onClick={() => go('plan')}>{t('planYourDay')}</button>
         </div>
       </main>
     )
@@ -40,14 +41,14 @@ export function Day() {
   return (
     <main className="page">
       <header className="page-head">
-        <span className="eyebrow">Overview<EventTag ev={eventOf(state, plan.eventId)} now={now} /></span>
-        <h1 className="page-title">Today</h1>
+        <span className="eyebrow">{t('overview')}<EventTag ev={eventOf(state, plan.eventId)} now={now} /></span>
+        <h1 className="page-title">{t('todayTitle')}</h1>
         <p className="page-sub">
-          {p.completed} of {p.total} tasks completed · {Math.round(p.ratio * 100)}% handled
+          {t('dayProgress', { done: p.completed, total: p.total, pct: Math.round(p.ratio * 100) })}
           {(() => {
             const bk = bankOf(state, now)
             return bk.counted && Math.abs(bk.ms) >= 1000 ? (
-              <span className={bk.ms > 0 ? 'is-ahead' : 'is-behind'}> · {signed(bk.ms)} {bk.ms > 0 ? 'saved' : 'behind'}</span>
+              <span className={bk.ms > 0 ? 'is-ahead' : 'is-behind'}> · {signed(bk.ms)} {bk.ms > 0 ? t('saved') : t('behind')}</span>
             ) : null
           })()}
         </p>
@@ -68,10 +69,10 @@ export function Day() {
                 onClick={() => (v === 'current' ? go('now') : setOpen(isOpen ? null : b.id))}
                 aria-expanded={canJump ? isOpen : undefined}
               >
-                <span className="tl-time">{hm(start)}</span>
+                <span className="tl-time" dir="ltr">{hm(start)}</span>
                 <span className="tl-mark" aria-hidden />
-                <span className="tl-name">{b.type === 'break' ? b.name || 'Break' : b.name || 'Untitled task'}</span>
-                <span className="tl-dur">{b.type === 'task' && !b.timed ? 'Untimed' : minutesLabel(b.duration)}</span>
+                <span className="tl-name">{b.type === 'break' ? b.name || t('break') : b.name || t('untitled')}</span>
+                <span className="tl-dur">{b.type === 'task' && !b.timed ? t('untimed') : minutesLabel(b.duration)}</span>
                 <span className="tl-state">{label(v, b.type)}</span>
               </button>
               {isOpen && (
@@ -81,7 +82,7 @@ export function Day() {
                     act({ type: 'JUMP_TO', id: b.id })
                     go('now')
                   }}>
-                    {b.type === 'break' ? 'Take this break now' : 'Do this now'}
+                    {b.type === 'break' ? t('takeBreakNow') : t('doThisNow')}
                   </button>
                 </div>
               )}
@@ -97,32 +98,32 @@ export function Day() {
             act({ type: 'START_DAY' })
             go('now')
           }}>
-            {Object.keys(run.records).length ? 'Continue' : 'Start day'}
+            {Object.keys(run.records).length ? t('continue') : t('startDay')}
           </button>
         )}
         {run.phase === 'active' && (
-          <button className="primary compact" onClick={() => go('now')}>Back to current</button>
+          <button className="primary compact" onClick={() => go('now')}>{t('backToCurrent')}</button>
         )}
         {run.phase === 'done' && (
-          <button className="primary compact" onClick={() => go('summary')}>View summary</button>
+          <button className="primary compact" onClick={() => go('summary')}>{t('viewSummary')}</button>
         )}
         {run.phase === 'active' &&
           (confirmEnd ? (
             <span className="confirm">
-              End the session now?
+              {t('endSessionNowQ')}
               <button className="link danger" onClick={() => {
                 act({ type: 'END_DAY' })
                 setConfirmEnd(false)
                 go('summary')
-              }}>End session</button>
-              <button className="link quiet" onClick={() => setConfirmEnd(false)}>Cancel</button>
+              }}>{t('endSession')}</button>
+              <button className="link quiet" onClick={() => setConfirmEnd(false)}>{t('cancel')}</button>
             </span>
           ) : (
-            <button className="link" onClick={() => setConfirmEnd(true)}>End session</button>
+            <button className="link" onClick={() => setConfirmEnd(true)}>{t('endSession')}</button>
           ))}
         {run.phase === 'active' && (
           <button className="link quiet" onClick={() => go('summary')}>
-            Summary so far
+            {t('summarySoFar')}
           </button>
         )}
       </div>
@@ -131,8 +132,8 @@ export function Day() {
 }
 
 function label(v: Visual, type: 'task' | 'break') {
-  if (v === 'completed') return type === 'break' ? 'Taken' : 'Completed'
-  if (v === 'current') return 'Now'
-  if (v === 'skipped') return 'Skipped'
+  if (v === 'completed') return type === 'break' ? t('taken') : t('completed')
+  if (v === 'current') return t('nowState')
+  if (v === 'skipped') return t('skipped')
   return ''
 }

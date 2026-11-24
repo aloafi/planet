@@ -1,5 +1,6 @@
 import type { DayLog } from './types'
 import { human, signed } from './format'
+import { isAr, nMin, t } from './i18n'
 
 /**
  * The shareable day — strictly black and white, nothing decorative.
@@ -14,7 +15,7 @@ const BLACK = '#000000'
 const WHITE = '#ffffff'
 const white = (a: number) => `rgba(255,255,255,${a})`
 
-const isRtl = (t: string) => /[֐-ࣿ]/.test(t)
+const isRtl = (s: string) => isAr() || /[֐-ࣿ]/.test(s)
 
 export interface CardInput {
   log: DayLog
@@ -43,39 +44,47 @@ export async function renderDayCard({ log, eventLine, dateLine }: CardInput): Pr
   ctx.textBaseline = 'alphabetic'
 
   // header: wordmark · date
+  const rtl = isAr()
   font(ctx, 600, 30)
   ctx.fillStyle = WHITE
-  ctx.fillText('planet', PAD, 132)
+  ctx.textAlign = rtl ? 'right' : 'left'
+  ctx.fillText('planet', rtl ? W - PAD : PAD, 132)
   font(ctx, 400, 26)
   ctx.fillStyle = white(0.55)
-  ctx.textAlign = 'right'
-  ctx.fillText(dateLine.toUpperCase(), W - PAD, 132)
+  ctx.textAlign = rtl ? 'left' : 'right'
+  ctx.direction = rtl ? 'rtl' : 'ltr'
+  ctx.fillText(rtl ? dateLine : dateLine.toUpperCase(), rtl ? PAD : W - PAD, 132)
+  ctx.direction = 'ltr'
   ctx.textAlign = 'left'
   rule(ctx, 164, 0.25)
 
   // title
   const recap = log.recap
   const pct = log.total ? Math.round((log.completed / log.total) * 100) : 0
-  const title = recap?.title || (pct === 100 ? 'Everything done.' : log.endedEarly ? 'Session ended.' : 'Day complete.')
+  const title = recap?.title || (pct === 100 ? t('allDone') : log.endedEarly ? t('sessionEnded') : t('dayComplete'))
   let y = text(ctx, title, 290, { size: 80, weight: 650, color: WHITE, lineH: 88, maxLines: 3 })
   if (eventLine) y = text(ctx, eventLine, y + 62, { size: 30, weight: 400, color: white(0.55), lineH: 40, maxLines: 1 })
 
   // stats
   y += 110
   const stats: [string, string][] = [
-    [`${log.completed}/${log.total}`, 'tasks done'],
-    [human(log.focusedMs), 'focused'],
-    Math.abs(log.bankMs) >= 60_000 ? [signed(log.bankMs), log.bankMs > 0 ? 'saved' : 'over plan'] : [`${pct}%`, 'completion'],
+    [`${log.completed}/${log.total}`, t('cardTasksDone')],
+    [human(log.focusedMs), t('cardFocused')],
+    Math.abs(log.bankMs) >= 60_000 ? [signed(log.bankMs), log.bankMs > 0 ? t('cardSaved') : t('cardOver')] : [`${pct}%`, t('cardCompletion')],
   ]
   const colW = (W - PAD * 2) / 3
   stats.forEach(([v, l], i) => {
-    const x = PAD + i * colW
+    const x = rtl ? W - PAD - i * colW : PAD + i * colW
+    ctx.textAlign = rtl ? 'right' : 'left'
+    ctx.direction = rtl ? 'rtl' : 'ltr'
     font(ctx, 500, 58)
     ctx.fillStyle = WHITE
     ctx.fillText(v, x, y, colW - 24)
     font(ctx, 400, 24)
     ctx.fillStyle = white(0.5)
-    ctx.fillText(l.toUpperCase(), x, y + 44)
+    ctx.fillText(rtl ? l : l.toUpperCase(), x, y + 44)
+    ctx.textAlign = 'left'
+    ctx.direction = 'ltr'
   })
   y += 92
   rule(ctx, y, 0.25)
@@ -88,12 +97,12 @@ export async function renderDayCard({ log, eventLine, dateLine }: CardInput): Pr
   const bottom = H - 150 - (boxH ? boxH + 48 : 0)
   const room = Math.max(0, Math.floor((bottom - y) / 58) + 1)
   const shown = tasks.length > room ? tasks.slice(0, Math.max(0, room - 1)) : tasks
-  for (const t of shown) {
-    const done = t.status === 'completed'
-    const skipped = t.status === 'skipped'
-    const rtl = isRtl(t.name)
+  for (const task of shown) {
+    const done = task.status === 'completed'
+    const skipped = task.status === 'skipped'
+    const rtl = isRtl(task.name)
     const mark = done ? '✓' : skipped ? '–' : '○'
-    const mins = `${Math.round(t.spentMs / 60_000) || t.plannedMin} min`
+    const mins = nMin(Math.round(task.spentMs / 60_000) || task.plannedMin)
     const color = done ? WHITE : white(skipped ? 0.35 : 0.55)
 
     font(ctx, 400, 26)
@@ -110,7 +119,7 @@ export async function renderDayCard({ log, eventLine, dateLine }: CardInput): Pr
     font(ctx, done ? 500 : 400, 34)
     ctx.direction = rtl ? 'rtl' : 'ltr'
     const nx = rtl ? W - PAD - 48 : PAD + 48
-    const name = fit(ctx, t.name, W - PAD * 2 - 48 - mw - 40)
+    const name = fit(ctx, task.name, W - PAD * 2 - 48 - mw - 40)
     ctx.fillText(name, nx, y)
     if (skipped) {
       const w = ctx.measureText(name).width
@@ -128,7 +137,11 @@ export async function renderDayCard({ log, eventLine, dateLine }: CardInput): Pr
   if (tasks.length > shown.length) {
     font(ctx, 400, 28)
     ctx.fillStyle = white(0.5)
-    ctx.fillText(`+${tasks.length - shown.length} more`, PAD + 48, y)
+    ctx.textAlign = rtl ? 'right' : 'left'
+    ctx.direction = rtl ? 'rtl' : 'ltr'
+    ctx.fillText(t('cardMore', { n: tasks.length - shown.length }), rtl ? W - PAD - 48 : PAD + 48, y)
+    ctx.textAlign = 'left'
+    ctx.direction = 'ltr'
   }
 
   // AI story — in a plain sharp-cornered box
@@ -143,7 +156,11 @@ export async function renderDayCard({ log, eventLine, dateLine }: CardInput): Pr
   // footer
   font(ctx, 400, 24)
   ctx.fillStyle = white(0.45)
-  ctx.fillText('ONE TASK. ONE SCREEN. ONE ACTION.', PAD, H - 72)
+  ctx.textAlign = rtl ? 'right' : 'left'
+  ctx.direction = rtl ? 'rtl' : 'ltr'
+  ctx.fillText(t('cardFooter'), rtl ? W - PAD : PAD, H - 72)
+  ctx.textAlign = 'left'
+  ctx.direction = 'ltr'
 
   return new Promise((resolve, reject) => c.toBlob((b) => (b ? resolve(b) : reject(new Error('png'))), 'image/png'))
 }

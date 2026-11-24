@@ -15,6 +15,8 @@
       try {
         var s = JSON.parse(localStorage.getItem('planet:v1') || 'null')
         if (s && s.settings && s.settings.theme) document.documentElement.dataset.theme = s.settings.theme
+        var l = s && s.settings && s.settings.lang
+        if (l === 'ar') { document.documentElement.lang = 'ar'; document.documentElement.dir = 'rtl' }
       } catch (e) {}
     </script>
   </head>

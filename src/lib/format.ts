@@ -1,3 +1,5 @@
+import { isAr, nMin } from './i18n'
+
 /** 1:05:09 / 45:00 — for countdowns */
 export function clock(ms: number) {
   const neg = ms < 0
@@ -16,12 +18,13 @@ export function stopwatch(ms: number) {
   return clock(Math.floor(ms / 1000) * 1000).replace('+', '')
 }
 
-/** 2h 15m / 45 min */
+/** 2h 15m / 45 min — or 2س 15د / 45 دقيقة */
 export function human(ms: number) {
   const mins = Math.round(ms / 60_000)
-  if (mins < 60) return `${mins} min`
+  if (mins < 60) return nMin(mins)
   const h = Math.floor(mins / 60)
   const m = mins % 60
+  if (isAr()) return m ? `${h}س ${m}د` : `${h} س`
   return m ? `${h}h ${m}m` : `${h}h`
 }
 
@@ -29,7 +32,7 @@ export function human(ms: number) {
 export function signed(ms: number) {
   const sign = ms < 0 ? '−' : '+'
   const abs = Math.abs(ms)
-  if (abs < 60_000) return `${sign}${Math.round(abs / 1000)} sec`
+  if (abs < 60_000) return `${sign}${Math.round(abs / 1000)} ${isAr() ? 'ث' : 'sec'}`
   return sign + human(abs)
 }
 

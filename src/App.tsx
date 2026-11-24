@@ -3,6 +3,7 @@ import { StoreProvider, useStore } from './lib/store'
 import { useRoute } from './lib/route'
 import { currentBlock, remainingOf, elapsedOf } from './lib/engine'
 import { clock, stopwatch } from './lib/format'
+import { t as tr } from './lib/i18n'
 import { Now } from './components/Now'
 import { Plan } from './components/Plan'
 import { Day } from './components/Day'
@@ -27,7 +28,7 @@ function Shell() {
   if (b) {
     const rem = remainingOf(b, t, now)
     const time = rem == null ? stopwatch(elapsedOf(t, now)) : clock(rem)
-    const label = b.type === 'break' ? 'Break' : b.name || 'Task'
+    const label = b.type === 'break' ? tr('break') : b.name || tr('task')
     title = `${t.status === 'paused' ? '❚❚ ' : ''}${time} · ${label}`
   }
   useEffect(() => {
