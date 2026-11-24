@@ -24,7 +24,7 @@ function Shell() {
 
   // live countdown in the tab title
   const t = state.run.timer
-  let title = 'planet'
+  let title = 'Planet'
   if (b) {
     const rem = remainingOf(b, t, now)
     const time = rem == null ? stopwatch(elapsedOf(t, now)) : clock(rem)

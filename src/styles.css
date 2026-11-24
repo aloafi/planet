@@ -1914,3 +1914,22 @@ button.ev-row {
   background: var(--danger);
   border-color: var(--danger);
 }
+
+/* ============ brand ============ */
+.brand-logo {
+  display: block;
+  height: 24px;
+  aspect-ratio: 2118 / 603;
+  background: var(--text);
+  -webkit-mask: url('/brand/planet-logo.png') no-repeat center / contain;
+  mask: url('/brand/planet-logo.png') no-repeat center / contain;
+}
+[data-theme='light'] .brand-logo {
+  opacity: 0.82;
+}
+.wordmark {
+  padding: 6px 2px;
+}
+[dir='rtl'] .wordmark {
+  direction: ltr;
+}

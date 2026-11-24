@@ -14,8 +14,7 @@ export function Nav({ route, onSettings }: { route: Route; onSettings: () => voi
   return (
     <header className={`nav ${route === 'now' ? 'nav-quiet' : ''}`}>
       <button className="wordmark" onClick={() => go('now')} aria-label={t('currentTask')}>
-        <span className="wordmark-dot" aria-hidden />
-        planet
+        <span className="brand-logo" aria-hidden />
       </button>
       <nav className="nav-links" aria-label="Main">
         {items.map(([r, l]) => (

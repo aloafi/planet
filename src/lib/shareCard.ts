@@ -1,6 +1,7 @@
 import type { DayLog } from './types'
 import { human, signed } from './format'
 import { isAr, nMin, t } from './i18n'
+import { LOGO_SRC, loadBrand, tintedBrand } from './brand'
 
 /**
  * The shareable day — strictly black and white, nothing decorative.
@@ -45,10 +46,18 @@ export async function renderDayCard({ log, eventLine, dateLine }: CardInput): Pr
 
   // header: wordmark · date
   const rtl = isAr()
-  font(ctx, 600, 30)
-  ctx.fillStyle = WHITE
-  ctx.textAlign = rtl ? 'right' : 'left'
-  ctx.fillText('planet', rtl ? W - PAD : PAD, 132)
+  await loadBrand(LOGO_SRC)
+  const logo = tintedBrand(LOGO_SRC, WHITE)
+  if (logo) {
+    const lh = 46
+    const lw = (lh * logo.width) / logo.height
+    ctx.drawImage(logo, rtl ? W - PAD - lw : PAD, 132 - lh + 8, lw, lh)
+  } else {
+    font(ctx, 600, 30)
+    ctx.fillStyle = WHITE
+    ctx.textAlign = rtl ? 'right' : 'left'
+    ctx.fillText('Planet.', rtl ? W - PAD : PAD, 132)
+  }
   font(ctx, 400, 26)
   ctx.fillStyle = white(0.55)
   ctx.textAlign = rtl ? 'left' : 'right'

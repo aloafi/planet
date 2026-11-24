@@ -8,7 +8,8 @@
  *          ringed planet blooming out of the button.
  */
 
-import { clamp, mix, paintPlanet, rgba } from './planetArt'
+import { clamp, rgba } from './planetArt'
+import { brandInk, MARK_SRC, tintedBrand } from './brand'
 
 export type FxKind = 'launch' | 'orbit'
 export type FxTint = 'task' | 'break'
@@ -56,18 +57,11 @@ export function planetFx(kind: FxKind, from?: Element | null, tint: FxTint = 'ta
 
   const root = getComputedStyle(document.documentElement)
   const v = (n: string, f: string) => root.getPropertyValue(n).trim() || f
-  const light = v('--text', '#f2f1ec')
-  const breakC = v('--break', '#8fd3c3')
-  const ink = tint === 'break' ? breakC : light
-  const backdrop = tint === 'break' ? v('--break-bg', '#061210') : v('--bg', '#0b0b0c')
-  const isLightTheme = document.documentElement.dataset.theme === 'light'
-  // sphere palette: lit side → base → night side
-  const sphere =
-    tint === 'break'
-      ? [mix(breakC, '#ffffff', 0.55), breakC, mix(breakC, '#000000', 0.82)]
-      : isLightTheme
-        ? ['#4a4a48', '#1d1d1c', '#000000']
-        : ['#ffffff', mix(light, '#000000', 0.35), mix(light, '#000000', 0.9)]
+  // strictly monochrome: the theme's text colour on the theme's background
+  const ink = v('--text', '#f2f1ec')
+  const backdrop = v('--bg', '#0b0b0c')
+  const logo = tintedBrand(MARK_SRC, brandInk())
+  void tint
 
   const diag = Math.hypot(W, H)
   const C = { x: W / 2, y: H * 0.46 }
@@ -128,7 +122,7 @@ export function planetFx(kind: FxKind, from?: Element | null, tint: FxTint = 'ta
     const py = lerp(o.y, C.y, rise) - Math.sin(rise * Math.PI) * 40
     const grow = ease.outBack(clamp((t - 40) / 620))
     const dive = ease.in(clamp((t - 1080) / 520))
-    const r = Math.max(0.01, R * grow + dive * (diag * 1.25 - R))
+    const r = Math.max(0.01, R * grow * (1 + dive * 1.4))
     const fade = 1 - clamp((t - 1220) / 380)
 
     // warp stars streaming out from the planet
@@ -157,7 +151,7 @@ export function planetFx(kind: FxKind, from?: Element | null, tint: FxTint = 'ta
     // the planet itself
     if (fade > 0) {
       ctx.globalAlpha = fade
-      drawPlanet(px, py, r, t, 1 - dive)
+      drawPlanet(px, py, r, t, ease.out(clamp((t - 100) / 700)))
       ctx.globalAlpha = 1
     }
   }
@@ -186,7 +180,7 @@ export function planetFx(kind: FxKind, from?: Element | null, tint: FxTint = 'ta
     const out = clamp((t - 520) / 500)
     const r = Math.max(0.01, (W < 640 ? 30 : 40) * g * (1 + out * 0.5))
     ctx.globalAlpha = 1 - ease.in(out)
-    drawPlanet(o.x, o.y - ease.out(out) * 60 - g * 6, r, t, 1)
+    drawPlanet(o.x, o.y - ease.out(out) * 60 - g * 6, r, t, g)
     ctx.globalAlpha = 1
   }
 
@@ -213,8 +207,24 @@ export function planetFx(kind: FxKind, from?: Element | null, tint: FxTint = 'ta
     ctx.stroke()
   }
 
-  function drawPlanet(x: number, y: number, r: number, t: number, ringAmt: number) {
-    paintPlanet(ctx, ink, sphere, x, y, r, t, ringAmt)
+  /** the Planet logo as the planet: soft glow, a slight tilt that settles, gentle float */
+  function drawPlanet(x: number, y: number, r: number, t: number, settle: number) {
+    if (r < 1.5) return
+    const glow = ctx.createRadialGradient(x, y, r * 0.4, x, y, r * 2.1)
+    glow.addColorStop(0, rgba(ink, 0.16))
+    glow.addColorStop(1, rgba(ink, 0))
+    ctx.fillStyle = glow
+    ctx.beginPath()
+    ctx.arc(x, y, r * 2.1, 0, Math.PI * 2)
+    ctx.fill()
+    if (!logo) return
+    const w = r * 2.6
+    const h = (w * logo.height) / logo.width
+    ctx.save()
+    ctx.translate(x, y + Math.sin(t / 380) * r * 0.03)
+    ctx.rotate(-0.28 * (1 - settle))
+    ctx.drawImage(logo, -w / 2, -h / 2, w, h)
+    ctx.restore()
   }
 
   raf = requestAnimationFrame(frame)
