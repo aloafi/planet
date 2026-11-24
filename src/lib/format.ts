@@ -25,6 +25,14 @@ export function human(ms: number) {
   return m ? `${h}h ${m}m` : `${h}h`
 }
 
+/** +5 min / −1h 10m / +40 sec — signed, for the time bank */
+export function signed(ms: number) {
+  const sign = ms < 0 ? '−' : '+'
+  const abs = Math.abs(ms)
+  if (abs < 60_000) return `${sign}${Math.round(abs / 1000)} sec`
+  return sign + human(abs)
+}
+
 export function minutesLabel(min: number) {
   return human(min * 60_000)
 }

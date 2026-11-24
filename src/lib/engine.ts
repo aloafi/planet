@@ -114,6 +114,34 @@ export const scheduleOf = (plan: Plan) => {
   })
 }
 
+/**
+ * Time bank: how far ahead (+) or behind (−) the plan you are.
+ * Each completed countdown block adds (planned − actual); a block running
+ * over its planned time eats into the bank live. Skipped and untimed blocks don't count.
+ */
+export const bankOf = (s: AppState, now: number) => {
+  let ms = 0
+  let counted = 0
+  for (const b of s.plan.blocks) {
+    if (!isCountdown(b)) continue
+    const r = s.run.records[b.id]
+    if (r?.status === 'completed') {
+      ms += b.duration * MIN - r.spentMs
+      counted++
+    }
+  }
+  const cur = s.run.phase === 'active' ? currentBlock(s) : null
+  if (cur && isCountdown(cur)) {
+    const prior = s.run.records[cur.id]?.spentMs ?? 0
+    const over = prior + elapsedOf(s.run.timer, now) - cur.duration * MIN
+    if (over > 0) {
+      ms -= over
+      counted++
+    }
+  }
+  return { ms, counted }
+}
+
 export const summaryOf = (s: AppState, now: number) => {
   const tasks = tasksOf(s.plan)
   let focusedMs = 0
@@ -128,6 +156,7 @@ export const summaryOf = (s: AppState, now: number) => {
   const skipped = tasks.filter((b) => statusOf(s.run, b.id) === 'skipped')
   const incomplete = tasks.filter((b) => statusOf(s.run, b.id) === 'pending')
   return {
+    bankMs: bankOf(s, now).ms,
     total: tasks.length,
     completed: completed.length,
     focusedMs,

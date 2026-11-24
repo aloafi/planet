@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { MIN, initialState, reducer, remainingOf, currentBlock, summaryOf, progressOf, revive, type Action } from './engine'
+import { MIN, bankOf, initialState, reducer, remainingOf, currentBlock, summaryOf, progressOf, revive, type Action } from './engine'
 import type { AppState, Block } from './types'
 
 const T0 = new Date(2026, 10, 24, 8, 0, 0).getTime()
@@ -109,5 +109,20 @@ describe('engine', () => {
     s = reducer(s, { type: 'LOAD_TEMPLATE', id: s.templates[0].id, now: T0 })
     expect(s.plan.blocks.map((b) => b.name)).toEqual(['Math', 'Break', 'Physics', 'Read'])
     expect(s.plan.blocks[0].id).not.toBe('a')
+  })
+})
+
+describe('time bank', () => {
+  it('finishing early banks the difference, running over takes it back', () => {
+    let s = run(setup(), { type: 'START_DAY', now: T0 }, { type: 'FINISH', now: T0 + 40 * MIN })
+    expect(bankOf(s, T0 + 40 * MIN).ms).toBe(5 * MIN)
+    // end the 10-min break after 7 → 3 more saved
+    s = reducer(s, { type: 'FINISH', now: T0 + 47 * MIN })
+    expect(bankOf(s, T0 + 47 * MIN).ms).toBe(8 * MIN)
+    // physics (50) running 52 min → 2 min over, live
+    expect(bankOf(s, T0 + 99 * MIN).ms).toBe(6 * MIN)
+    s = reducer(s, { type: 'SKIP', now: T0 + 99 * MIN })
+    // skipped blocks don't count
+    expect(bankOf(s, T0 + 99 * MIN).ms).toBe(8 * MIN)
   })
 })

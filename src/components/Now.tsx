@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useStore } from '../lib/store'
-import { currentBlock, elapsedOf, nextPending, progressOf, remainingOf, scheduleOf, taskNumber, tasksOf, totalMsOf, sampleBlocks } from '../lib/engine'
-import { clock, hm, human, minutesLabel, stopwatch } from '../lib/format'
+import { bankOf, currentBlock, elapsedOf, nextPending, progressOf, remainingOf, scheduleOf, taskNumber, tasksOf, totalMsOf, sampleBlocks } from '../lib/engine'
+import { clock, hm, human, minutesLabel, signed, stopwatch } from '../lib/format'
 import { go } from '../lib/route'
 import type { Block } from '../lib/types'
 import { Summary } from './Summary'
@@ -33,6 +33,31 @@ function Progress() {
   )
 }
 
+/** Top-right: minutes saved (finished early) or lost (ran over) against the plan. */
+function Bank() {
+  const { state, now } = useStore()
+  const { ms, counted } = bankOf(state, now)
+  if (!counted || Math.abs(ms) < 1000) return null
+  const ahead = ms > 0
+  return (
+    <span className={`bank ${ahead ? 'is-ahead' : 'is-behind'}`} title={ahead ? 'Time saved by finishing early' : 'Time over the plan'}>
+      <span className="bank-value">{signed(ms)}</span>
+      <span className="bank-label">{ahead ? 'saved' : 'behind'}</span>
+    </span>
+  )
+}
+
+function MetaRight() {
+  return (
+    <span className="meta-right">
+      <Bank />
+      <button className="link quiet" onClick={() => go('day')}>
+        Overview
+      </button>
+    </span>
+  )
+}
+
 function useShortcuts(map: Record<string, () => void>) {
   useEffect(() => {
     const on = (e: KeyboardEvent) => {
@@ -59,6 +84,7 @@ function TaskMode({ b }: { b: Block }) {
   const { run, plan, settings } = state
   const t = run.timer
   const [extendOpen, setExtendOpen] = useState(false)
+  const [ending, setEnding] = useState(false)
   const rem = remainingOf(b, t, now)
   const elapsed = elapsedOf(t, now)
   const expired = rem != null && rem <= 0
@@ -84,7 +110,10 @@ function TaskMode({ b }: { b: Block }) {
 
   useShortcuts({ enter: ready ? toggle : finish, f: finish, space: toggle, p: toggle, s: skip, e: () => b.timed && extend(5) })
 
-  useEffect(() => setExtendOpen(false), [b.id])
+  useEffect(() => {
+    setExtendOpen(false)
+    setEnding(false)
+  }, [b.id])
 
   let timeLabel: string
   if (!b.timed) timeLabel = paused ? 'Paused' : ready ? 'Untimed' : 'Elapsed'
@@ -100,9 +129,7 @@ function TaskMode({ b }: { b: Block }) {
           <span>
             Task <b>{n}</b> of {total}
           </span>
-          <button className="link quiet" onClick={() => go('day')}>
-            Overview
-          </button>
+          <MetaRight />
         </div>
         <Progress />
       </div>
@@ -141,7 +168,9 @@ function TaskMode({ b }: { b: Block }) {
           </button>
         )}
 
-        {askOpen ? null : extendOpen ? (
+        {ending ? (
+          <EndConfirm onCancel={() => setEnding(false)} />
+        ) : askOpen ? null : extendOpen ? (
           <div className="secondary">
             {[5, 10, 15].map((m) => (
               <button key={m} className="link" onClick={() => extend(m)}>
@@ -167,10 +196,37 @@ function TaskMode({ b }: { b: Block }) {
             <button className="link" onClick={skip}>
               Skip
             </button>
+            <button className="link quiet" onClick={() => setEnding(true)}>
+              End session
+            </button>
           </div>
         )}
       </section>
     </main>
+  )
+}
+
+/** Inline confirmation that replaces the small controls row. */
+function EndConfirm({ onCancel }: { onCancel: () => void }) {
+  const { state, act } = useStore()
+  const left = tasksOf(state.plan).filter((t) => (state.run.records[t.id]?.status ?? 'pending') === 'pending').length
+  useEffect(() => {
+    const on = (e: KeyboardEvent) => e.key === 'Escape' && onCancel()
+    window.addEventListener('keydown', on)
+    return () => window.removeEventListener('keydown', on)
+  }, [onCancel])
+  return (
+    <div className="secondary end-confirm" role="group" aria-label="End session">
+      <span className="end-q">
+        End this session?{left > 0 ? ` ${left} ${left === 1 ? 'task stays' : 'tasks stay'} unfinished.` : ''}
+      </span>
+      <button className="link danger" onClick={() => act({ type: 'END_DAY' })} autoFocus>
+        End session
+      </button>
+      <button className="link quiet" onClick={onCancel}>
+        Cancel
+      </button>
+    </div>
   )
 }
 
@@ -196,6 +252,7 @@ function BreakMode({ b }: { b: Block }) {
   const next = nextPending(plan, run, b.id)
   const nextN = next && next.type === 'task' ? taskNumber(plan, next.id) : null
   const waiting = over && settings.breakEnd === 'wait'
+  const [ending, setEnding] = useState(false)
   const toggle = () => act({ type: ready ? 'START' : paused ? 'RESUME' : 'PAUSE' })
   const end = () => {
     planetFx('launch', mainButton(), tintOf(next))
@@ -211,9 +268,7 @@ function BreakMode({ b }: { b: Block }) {
       <div className="stage-top">
         <div className="meta">
           <span>{b.name && b.name.toLowerCase() !== 'break' ? b.name : 'Break'}</span>
-          <button className="link quiet" onClick={() => go('day')}>
-            Overview
-          </button>
+          <MetaRight />
         </div>
         <Progress />
       </div>
@@ -250,6 +305,9 @@ function BreakMode({ b }: { b: Block }) {
         <button className="primary" onClick={end} autoFocus>
           {waiting && next ? `Start ${next.name || 'next'}` : 'End break'}
         </button>
+        {ending ? (
+          <EndConfirm onCancel={() => setEnding(false)} />
+        ) : (
         <div className="secondary">
           {ready ? (
             <button className="link" onClick={toggle}>Start break</button>
@@ -259,7 +317,11 @@ function BreakMode({ b }: { b: Block }) {
           <button className="link" onClick={() => act({ type: 'EXTEND', minutes: 5 })}>
             +5 min
           </button>
+          <button className="link quiet" onClick={() => setEnding(true)}>
+            End session
+          </button>
         </div>
+        )}
       </section>
     </main>
   )

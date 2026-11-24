@@ -1,14 +1,14 @@
 import { useState } from 'react'
 import { useStore } from '../lib/store'
-import { progressOf, scheduleOf, statusOf } from '../lib/engine'
-import { hm, minutesLabel } from '../lib/format'
+import { bankOf, progressOf, scheduleOf, statusOf } from '../lib/engine'
+import { hm, minutesLabel, signed } from '../lib/format'
 import { go } from '../lib/route'
 import { planetFx } from '../lib/fx'
 
 type Visual = 'completed' | 'current' | 'upcoming' | 'skipped'
 
 export function Day() {
-  const { state, act } = useStore()
+  const { state, act, now } = useStore()
   const { plan, run } = state
   const [open, setOpen] = useState<string | null>(null)
   const [confirmEnd, setConfirmEnd] = useState(false)
@@ -42,6 +42,12 @@ export function Day() {
         <h1 className="page-title">Today</h1>
         <p className="page-sub">
           {p.completed} of {p.total} tasks completed · {Math.round(p.ratio * 100)}% handled
+          {(() => {
+            const bk = bankOf(state, now)
+            return bk.counted && Math.abs(bk.ms) >= 1000 ? (
+              <span className={bk.ms > 0 ? 'is-ahead' : 'is-behind'}> · {signed(bk.ms)} {bk.ms > 0 ? 'saved' : 'behind'}</span>
+            ) : null
+          })()}
         </p>
         <div className="progress page-progress">
           <div className="progress-fill" style={{ transform: `scaleX(${p.ratio})` }} />
@@ -101,16 +107,16 @@ export function Day() {
         {run.phase === 'active' &&
           (confirmEnd ? (
             <span className="confirm">
-              End the day now?
+              End the session now?
               <button className="link danger" onClick={() => {
                 act({ type: 'END_DAY' })
                 setConfirmEnd(false)
                 go('summary')
-              }}>End day</button>
+              }}>End session</button>
               <button className="link quiet" onClick={() => setConfirmEnd(false)}>Cancel</button>
             </span>
           ) : (
-            <button className="link" onClick={() => setConfirmEnd(true)}>End day</button>
+            <button className="link" onClick={() => setConfirmEnd(true)}>End session</button>
           ))}
         {run.phase === 'active' && (
           <button className="link quiet" onClick={() => go('summary')}>

@@ -1421,3 +1421,59 @@ textarea::placeholder {
   z-index: 60;
   pointer-events: none;
 }
+
+.end-confirm {
+  animation: fade 0.25s ease both;
+}
+.end-q {
+  color: var(--text-2);
+  font-size: 14px;
+  text-align: center;
+}
+
+/* time bank */
+.meta-right {
+  display: inline-flex;
+  align-items: center;
+  gap: 18px;
+}
+.bank {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--line-strong);
+  animation: fade 0.4s ease both;
+}
+.bank-value {
+  font-size: 14px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+.bank-label {
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+.bank.is-ahead .bank-value,
+.is-ahead {
+  color: var(--break);
+}
+body[data-mode='break'] .bank.is-ahead .bank-value {
+  color: var(--text);
+}
+.bank.is-behind .bank-value,
+.is-behind {
+  color: var(--over);
+}
+@media (max-width: 640px) {
+  .meta-right {
+    gap: 10px;
+  }
+  .bank {
+    padding: 4px 10px;
+  }
+}

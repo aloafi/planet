@@ -1,6 +1,6 @@
 import { useStore } from '../lib/store'
 import { summaryOf } from '../lib/engine'
-import { human } from '../lib/format'
+import { human, signed } from '../lib/format'
 import { go } from '../lib/route'
 import { planetFx } from '../lib/fx'
 
@@ -12,13 +12,18 @@ export function Summary() {
   const left = [...s.skipped.map((b) => ({ b, why: 'Skipped' })), ...s.incomplete.map((b) => ({ b, why: done ? 'Not finished' : 'Not started' }))]
   const ordered = state.plan.blocks.filter((b) => left.some((l) => l.b.id === b.id)).map((b) => left.find((l) => l.b.id === b.id)!)
 
-  const headline = !done ? 'So far today.' : s.total === 0 ? 'Day complete.' : s.percent === 100 ? 'Everything done.' : run.endedEarly ? 'Day ended.' : 'Day complete.'
+  const headline = !done ? 'So far today.' : s.total === 0 ? 'Day complete.' : s.percent === 100 ? 'Everything done.' : run.endedEarly ? 'Session ended.' : 'Day complete.'
 
   return (
     <main className="page summary">
       <header className="page-head">
         <span className="eyebrow">{new Date(now).toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}</span>
         <h1 className="page-title">{headline}</h1>
+        {Math.abs(s.bankMs) >= 60_000 && (
+          <p className={`page-sub bank-line ${s.bankMs > 0 ? 'is-ahead' : 'is-behind'}`}>
+            {s.bankMs > 0 ? `${signed(s.bankMs)} saved — you finished ahead of plan.` : `${signed(s.bankMs)} — tasks ran over the plan.`}
+          </p>
+        )}
       </header>
 
       <div className="stats">
