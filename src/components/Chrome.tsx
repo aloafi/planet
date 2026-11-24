@@ -120,6 +120,7 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
             ]}
             onChange={(v) => set({ theme: v as S['theme'] })}
           />
+          <Toggle label="Planet transitions" note="Waves and planets when you start and finish." on={s.motion} onChange={(v) => set({ motion: v })} />
         </Group>
 
         <Group title="Keyboard">

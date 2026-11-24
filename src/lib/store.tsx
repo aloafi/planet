@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useReducer,
 import { currentBlock, reducer, remainingOf, revive, type Action } from './engine'
 import type { AppState, Block, Settings } from './types'
 import { chime, unlockAudio } from './sound'
+import { setFxEnabled } from './fx'
 
 const KEY = 'planet:v1'
 
@@ -158,6 +159,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       lock?.release().catch(() => {})
     }
   }, [wantWake])
+
+  useEffect(() => setFxEnabled(state.settings.motion), [state.settings.motion])
 
   // theme
   useEffect(() => {

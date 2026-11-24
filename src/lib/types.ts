@@ -75,6 +75,8 @@ export interface Settings {
   notify: boolean
   wakeLock: boolean
   theme: 'dark' | 'light'
+  /** planet transitions */
+  motion: boolean
 }
 
 export interface AppState {

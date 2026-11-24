@@ -2,6 +2,7 @@ import { useStore } from '../lib/store'
 import { summaryOf } from '../lib/engine'
 import { human } from '../lib/format'
 import { go } from '../lib/route'
+import { planetFx } from '../lib/fx'
 
 export function Summary() {
   const { state, now, act } = useStore()
@@ -35,7 +36,8 @@ export function Summary() {
               <li key={b.id}>
                 <span className="leftover-name">{b.name || 'Untitled task'}</span>
                 <span className="leftover-why">{why}</span>
-                <button className="link" onClick={() => {
+                <button className="link" onClick={(e) => {
+                  planetFx('launch', e.currentTarget)
                   act({ type: 'JUMP_TO', id: b.id })
                   go('now')
                 }}>
@@ -50,7 +52,8 @@ export function Summary() {
       <div className="page-actions">
         {done ? (
           <>
-            <button className="primary compact" onClick={() => {
+            <button className="primary compact" onClick={(e) => {
+              planetFx('launch', e.currentTarget)
               act({ type: 'RESET_DAY' })
               go('now')
             }}>

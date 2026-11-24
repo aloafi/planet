@@ -38,6 +38,7 @@ export const defaultSettings: Settings = {
   notify: false,
   wakeLock: true,
   theme: 'dark',
+  motion: true,
 }
 
 export const sampleBlocks = (): Block[] => [

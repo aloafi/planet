@@ -15,6 +15,7 @@ import { useStore } from '../lib/store'
 import { parseHM, scheduleOf, statusOf, uid } from '../lib/engine'
 import { hm, human, minutesLabel } from '../lib/format'
 import { go } from '../lib/route'
+import { planetFx } from '../lib/fx'
 import type { Block, BlockType } from '../lib/types'
 
 export function Plan() {
@@ -108,8 +109,11 @@ export function Plan() {
 
       {plan.blocks.length > 0 && run.phase !== 'active' && (
         <div className="page-actions">
-          <button className="primary compact" onClick={() => {
-            if (run.phase === 'idle') act({ type: 'START_DAY' })
+          <button className="primary compact" onClick={(e) => {
+            if (run.phase === 'idle') {
+              planetFx('launch', e.currentTarget, plan.blocks.find((b) => statusOf(run, b.id) === 'pending')?.type === 'break' ? 'break' : 'task')
+              act({ type: 'START_DAY' })
+            }
             go('now')
           }}>
             {run.phase === 'idle' ? (Object.keys(run.records).length ? 'Continue' : 'Start day') : 'View summary'}

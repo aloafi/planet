@@ -3,6 +3,7 @@ import { useStore } from '../lib/store'
 import { progressOf, scheduleOf, statusOf } from '../lib/engine'
 import { hm, minutesLabel } from '../lib/format'
 import { go } from '../lib/route'
+import { planetFx } from '../lib/fx'
 
 type Visual = 'completed' | 'current' | 'upcoming' | 'skipped'
 
@@ -67,7 +68,8 @@ export function Day() {
               </button>
               {isOpen && (
                 <div className="tl-actions">
-                  <button className="link" onClick={() => {
+                  <button className="link" onClick={(e) => {
+                    planetFx('launch', e.currentTarget, b.type === 'break' ? 'break' : 'task')
                     act({ type: 'JUMP_TO', id: b.id })
                     go('now')
                   }}>
@@ -82,7 +84,8 @@ export function Day() {
 
       <div className="page-actions">
         {run.phase === 'idle' && (
-          <button className="primary compact" onClick={() => {
+          <button className="primary compact" onClick={(e) => {
+            planetFx('launch', e.currentTarget)
             act({ type: 'START_DAY' })
             go('now')
           }}>

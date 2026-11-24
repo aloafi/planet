@@ -5,6 +5,10 @@ import { clock, hm, human, minutesLabel, stopwatch } from '../lib/format'
 import { go } from '../lib/route'
 import type { Block } from '../lib/types'
 import { Summary } from './Summary'
+import { planetFx, type FxTint } from '../lib/fx'
+
+const tintOf = (b: Block | null | undefined): FxTint => (b?.type === 'break' ? 'break' : 'task')
+const mainButton = () => document.querySelector('.primary')
 
 export function Now() {
   const { state } = useStore()
@@ -64,9 +68,15 @@ function TaskMode({ b }: { b: Block }) {
   const ready = t.status === 'ready'
   const paused = t.status === 'paused'
 
-  const finish = () => step('FINISH', `${b.name || 'Task'} completed`)
+  const finish = () => {
+    planetFx('orbit', mainButton(), tintOf(nextPending(plan, run, b.id)))
+    step('FINISH', `${b.name || 'Task'} completed`)
+  }
   const skip = () => step('SKIP', `${b.name || 'Task'} skipped`)
-  const toggle = () => act({ type: ready ? 'START' : paused ? 'RESUME' : 'PAUSE' })
+  const toggle = () => {
+    if (ready) planetFx('launch', mainButton())
+    act({ type: ready ? 'START' : paused ? 'RESUME' : 'PAUSE' })
+  }
   const extend = (m: number) => {
     act({ type: 'EXTEND', minutes: m })
     setExtendOpen(false)
@@ -187,7 +197,10 @@ function BreakMode({ b }: { b: Block }) {
   const nextN = next && next.type === 'task' ? taskNumber(plan, next.id) : null
   const waiting = over && settings.breakEnd === 'wait'
   const toggle = () => act({ type: ready ? 'START' : paused ? 'RESUME' : 'PAUSE' })
-  const end = () => step('FINISH', 'Break ended')
+  const end = () => {
+    planetFx('launch', mainButton(), tintOf(next))
+    step('FINISH', 'Break ended')
+  }
 
   useShortcuts({ enter: end, f: end, space: toggle, p: toggle, e: () => act({ type: 'EXTEND', minutes: 5 }) })
 
@@ -259,7 +272,12 @@ function Ready() {
   const { plan, run } = state
   const first = nextPending(plan, run, null)
   const continuing = Object.keys(run.records).length > 0
-  useShortcuts({ enter: () => first && act({ type: 'START_DAY' }) })
+  const startDay = () => {
+    if (!first) return
+    planetFx('launch', mainButton(), tintOf(first))
+    act({ type: 'START_DAY' })
+  }
+  useShortcuts({ enter: startDay })
   if (!first) return <Summary />
 
   const sched = scheduleOf(plan)
@@ -293,7 +311,7 @@ function Ready() {
       </section>
 
       <section className="controls">
-        <button className="primary" onClick={() => act({ type: 'START_DAY' })} autoFocus>
+        <button className="primary" onClick={startDay} autoFocus>
           {continuing ? 'Continue' : 'Start day'}
         </button>
         <div className="secondary">
@@ -317,7 +335,10 @@ function Empty() {
         <p className="task-desc">Add tasks and breaks in order. Planet shows you one at a time.</p>
       </section>
       <section className="controls">
-        <button className="primary" onClick={() => go('plan')} autoFocus>
+        <button className="primary" onClick={(e) => {
+          planetFx('launch', e.currentTarget)
+          go('plan')
+        }} autoFocus>
           Plan your day
         </button>
         <div className="secondary">
