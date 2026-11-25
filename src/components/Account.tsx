@@ -70,10 +70,16 @@ function AuthDialog({ mode, onMode, onClose }: { mode: Mode; onMode: (m: Mode) =
       if (err) setError(err === 'Invalid login credentials' ? t('authError') : err)
       else onClose()
     } else if (mode === 'up') {
-      const { error: err, confirm } = await cloud.signUp(email, password)
-      if (err) setError(err)
-      else if (confirm) setNote(t('confirmSent'))
-      else onClose()
+      const { error: err } = await cloud.signUp(email, password)
+      const map: Record<string, string> = {
+        exists: t('signupExists'),
+        email: t('signupEmail'),
+        password: t('signupPassword'),
+        rate: t('signupRate'),
+      }
+      if (err) {
+        setError(map[err] ?? t('signupFailed'))
+      } else onClose()
     } else if (mode === 'forgot') {
       const err = await cloud.resetPassword(email)
       if (err) setError(err)

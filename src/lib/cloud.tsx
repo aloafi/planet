@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import type { Session } from '@supabase/supabase-js'
-import { supabase } from './supabase'
+import { supabase, SUPABASE_URL_PUBLIC, SUPABASE_KEY_PUBLIC } from './supabase'
 import { useStore } from './store'
 import { initialState, revive } from './engine'
 import type { AppState } from './types'
@@ -167,12 +167,24 @@ export function CloudProvider({ children }: { children: ReactNode }) {
         return error ? error.message : null
       },
       signUp: async (email, password) => {
-        const { data, error } = await supabase.auth.signUp({
-          email: email.trim(),
-          password,
-          options: { emailRedirectTo: window.location.origin },
-        })
-        return { error: error ? error.message : null, confirm: !error && !data.session }
+        // Accounts are created already confirmed by the planet-signup function — no verification email.
+        const mail = email.trim()
+        let code: string | null = null
+        try {
+          const r = await fetch(`${SUPABASE_URL_PUBLIC}/functions/v1/planet-signup`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', apikey: SUPABASE_KEY_PUBLIC },
+            body: JSON.stringify({ email: mail, password }),
+          })
+          const j = await r.json().catch(() => ({}))
+          if (!r.ok) code = j.error ?? 'create'
+        } catch {
+          code = 'network'
+        }
+        if (code && code !== 'exists') return { error: code, confirm: false }
+        const { error } = await supabase.auth.signInWithPassword({ email: mail, password })
+        if (error) return { error: code === 'exists' ? 'exists' : error.message, confirm: false }
+        return { error: null, confirm: false }
       },
       signOut: async () => {
         if (uid && stateRef.current.updatedAt > lastSynced.current) await push()
